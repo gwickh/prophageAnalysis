@@ -1,20 +1,25 @@
 #!/usr/bin/env bash
 
 #find path to conda base environment
-basepath="$(sudo find ~ -maxdepth 4 -name mambaforge)"
-source $basepath/etc/profile.d/conda.sh
+basepath="$(sudo find ~ -maxdepth 4 -name conda.sh)"
+source $basepath
 
-conda create trimmomatic -n trimmomatic -c bioconda -c conda-forge
-conda create fastqc multiqc -n fastqc -c bioconda -c conda-forge
-conda create shovill -n shovill -c bioconda -c conda-forge
-conda create quast -n quast -c bioconda -c conda-forge
-conda create bakta -n bakta -c bioconda -c conda-forge
-conda create refseq_masher -n refseq_masher -c bioconda -c conda-forge
+#create conda environments if not already present
+for env in {trimmomatic,shovill,quast,bakta,refseq_masher,multiqc,fastqc}
+	do
+		if 
+            [ -f $basepath/envs/$env/./bin/$env ] 
+		then
+			echo "$env conda env present" 
+		else
+			conda create $env -n $env -c bioconda -c conda-forge
+		fi
+	done
 
 #loop trimmomatic through directory
 conda activate trimmomatic
-for infile in *1_001.fastq.gz;  
-	do base=$(basename ${infile} 1_001.fastq.gz);  
+for infile in *1_001.fastq.gz 
+	do base=$(basename ${infile} 1_001.fastq.gz)
 	trimmomatic \
 		PE \
 		${infile} \
@@ -37,9 +42,12 @@ conda deactivate
 conda activate fastqc
 mkdir fastqc_reports
 for k in trimmed_paired/*_001_trim.fastq.gz; 
-	do fastqc $k -o fastqc_reports/; 
-	echo $k; 
-	done;
+	do 
+		fastqc $k -o fastqc_reports/; 
+		echo $k; 
+	done
+conda deactivate
+conda activate multiqc
 multiqc fastqc_reports/ -o fastqc_reports/
 conda deactivate
 
@@ -47,25 +55,31 @@ conda deactivate
 conda activate shovill
 mkdir assemblies
 for infile in trimmed_paired/*1_001_trim.fastq.gz;  
-	do base=$(basename ${infile} 1_001_trim.fastq.gz);  
-	mkdir assemblies/${base}/;
-	shovill \
-		--R1 ${infile} \
-		--R2 trimmed_paired/${base}2_001_trim.fastq.gz \
-		--outdir assemblies/${base} \
-		--force; 
-	done;
+	do 
+		base=$(basename ${infile} 1_001_trim.fastq.gz)  
+		mkdir assemblies/${base}/
+		shovill \
+			--R1 ${infile} \
+			--R2 trimmed_paired/${base}2_001_trim.fastq.gz \
+			--outdir assemblies/${base} \
+			--force;
+	done
 conda deactivate
+for k in assemblies/* 
+	do 
+		mv "${k}" "${k//\_R/}"
+	done
 
 #assess assembly quality with QUAST
 conda activate quast
 mkdir quast_reports
-for infile in trimmed_paired/*1_001_trim.fastq.gz;  
-	do base=$(basename ${infile} 1_001_trim.fastq.gz);  
-	quast \
-		assemblies/${base}/contigs.fa \
-		-o quast_reports/${base};
-	done;
+for infile in trimmed_paired/*1_001_trim.fastq.gz
+	do 
+		base=$(basename ${infile} 1_001_trim.fastq.gz)
+		quast \
+			assemblies/${base}/contigs.fa \
+			-o quast_reports/${base};
+	done
 conda deactivate
 
 #annotate genome with bakta
@@ -77,24 +91,26 @@ then
 else
 	bakta_db download --output annotated_genomes/ --type full
 fi
-for infile in trimmed_paired/*1_001_trim.fastq.gz;  
-	do base=$(basename ${infile} 1_001_trim.fastq.gz);  
-	mkdir annotated_genomes/${base}/;
-	bakta \
-		--db annotated_genomes/db/ \
-		--verbose \
-		--force \
-		--output annotated_genomes/${base} \
-		assemblies/${base}/contigs.fa;
-	done;
+for infile in trimmed_paired/*1_001_trim.fastq.gz  
+	do 
+		base=$(basename ${infile} 1_001_trim.fastq.gz)
+		mkdir annotated_genomes/${base}/;
+		bakta \
+			--db annotated_genomes/db/ \
+			--verbose \
+			--force \
+			--output annotated_genomes/${base} \
+			assemblies/${base}/contigs.fa;
+		done
  conda deactivate
 
 #run refseq-masher
 conda activate refseq_masher
 mkdir refseq_masher
-for infile in trimmed_paired/*1_001_trim.fastq.gz;  
-	do base=$(basename ${infile} 1_001_trim.fastq.gz);  
-	refseq_masher \
-		-vv matches assemblies/${base}/contigs.fa > refseq_masher/${base}.tsv;
-	done;
+for infile in trimmed_paired/*1_001_trim.fastq.gz
+	do 
+		base=$(basename ${infile} 1_001_trim.fastq.gz)
+		refseq_masher \
+			-vv matches assemblies/${base}/contigs.fa > refseq_masher/${base}.tsv
+	done
 conda deactivate
