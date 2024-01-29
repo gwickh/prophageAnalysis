@@ -5,10 +5,11 @@ basepath="$(sudo find ~ -maxdepth 4 -name conda.sh)"
 source $basepath
 
 #create conda environments if not already present
+envpath="$(sudo find ~ -maxdepth 3 -name envs)"
 for env in {trimmomatic,shovill,quast,bakta,refseq_masher,multiqc,fastqc}
 	do
 		if 
-            [ -f $basepath/envs/$env/./bin/$env ] 
+            [ -f $envpath/$env/./bin/$env ] 
 		then
 			echo "$env conda env present" 
 		else
@@ -93,7 +94,7 @@ else
 fi
 for infile in trimmed_paired/*1_001_trim.fastq.gz  
 	do 
-		base=$(basename ${infile} 1_001_trim.fastq.gz)
+		base=$(basename ${infile} _R1_001_trim.fastq.gz)
 		mkdir annotated_genomes/${base}/;
 		bakta \
 			--db annotated_genomes/db/ \
@@ -101,7 +102,7 @@ for infile in trimmed_paired/*1_001_trim.fastq.gz
 			--force \
 			--output annotated_genomes/${base} \
 			assemblies/${base}/contigs.fa;
-		done
+	done
  conda deactivate
 
 #run refseq-masher
