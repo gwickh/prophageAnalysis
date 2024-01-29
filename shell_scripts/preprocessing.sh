@@ -9,7 +9,7 @@ envpath="$(sudo find ~ -maxdepth 3 -name envs)"
 for env in {trimmomatic,shovill,quast,bakta,refseq_masher,multiqc,fastqc}
 	do
 		if 
-            [ -f $envpath/$env/./bin/$env ] 
+        	[ -f $envpath/$env/./bin/$env ] 
 		then
 			echo "$env conda env present" 
 		else
