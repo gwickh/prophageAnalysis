@@ -19,7 +19,8 @@ for env in vibrant
     done
 
 #set up vibrant database
-dbpath="$(sudo find ~ -maxdepth 4 -name 'vibrant_db')"
+echo "checking for vibrant database up to 6 subdirectories deep from home"
+dbpath="$(sudo find ~ -maxdepth 6 -name VIBRANT_setup.py)"
 
 conda activate vibrant
 if [ -d "$dbpath" ]
@@ -29,8 +30,7 @@ else
     echo "vibrant database not detected, downloading to databases/ in current directory"
     mkdir databases/
     mkdir databases/vibrant_db
-    download-db.sh databases/
-    mv databases/files databases/vibrant_db && mv databases/databases databases/vibrant_db
+    download-db.sh databases/vibrant_db/
 fi
 
 # #run vibrant
