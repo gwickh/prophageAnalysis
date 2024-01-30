@@ -22,16 +22,16 @@ for env in genomad
 dbpath="$(sudo find ~ -maxdepth 4 -type d -name 'genomad_db')"
 
 conda activate genomad
-if [ -d $dbpath ]
+if [ -d "$dbpath" ]
 then
 	echo "Genomad database detected" 
 else
-    echo "Genomad database not detected, downloading to /databases/ directory in /home/"
-    mkdir ~/databases 
-    genomad download-database ~/databases
+    echo "Genomad database not detected, downloading to databases/ directory in current directory"
+    mkdir databases 
+    genomad download-database databases
 fi
 
-# #run genomad
+#run genomad
 mkdir output_genomad
 for infile in trimmed_paired/*1_001_trim.fastq.gz
     do
