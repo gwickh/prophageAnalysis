@@ -45,7 +45,7 @@ function genomad_macro () {
     end-to-end \
     --cleanup \
     --splits 4 \
-    assemblies/$1 \
+    assemblies/$base$1 \
     output_genomad/$base \
     $dbpath
 	}
