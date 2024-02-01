@@ -33,9 +33,9 @@ fi
 
 #run genomad
 mkdir output_genomad
-for infile in trimmed_paired/*1_001_trim.fastq.gz
-    do
-    	base=$(basename ${infile} _R1_001_trim.fastq.gz)
+for k in assemblies/*
+	do 
+		base=$(basename ${k})
 		mkdir output_genomad/${base}/;
         genomad \
             end-to-end \

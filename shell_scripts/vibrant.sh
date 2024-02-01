@@ -35,9 +35,9 @@ fi
 
 # #run vibrant
 mkdir output_vibrant
-for infile in trimmed_paired/*1_001_trim.fastq.gz
-    do
-    	base=$(basename ${infile} _R1_001_trim.fastq.gz)
+for k in assemblies/*
+	do 
+		base=$(basename ${k})
         mkdir output_vibrant/${base}/;
         VIBRANT_run.py \
             -i assemblies/$base/contigs.fa \

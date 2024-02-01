@@ -66,17 +66,14 @@ for infile in trimmed_paired/*1_001_trim.fastq.gz;
 			--force;
 	done
 conda deactivate
-for k in assemblies/* 
-	do 
-		mv "${k}" "${k//\_R/}"
-	done
 
 #assess assembly quality with QUAST
 conda activate quast
 mkdir quast_reports
-for infile in trimmed_paired/*1_001_trim.fastq.gz
+for k in assemblies/*
 	do 
-		base=$(basename ${infile} 1_001_trim.fastq.gz)
+		base=$(basename ${k})
+		mv "${k}" "${k//\_R/}"
 		quast \
 			assemblies/${base}/contigs.fa \
 			-o quast_reports/${base};
@@ -92,9 +89,9 @@ then
 else
 	bakta_db download --output annotated_genomes/ --type full
 fi
-for infile in trimmed_paired/*1_001_trim.fastq.gz  
+for k in assemblies/*
 	do 
-		base=$(basename ${infile} _R1_001_trim.fastq.gz)
+		base=$(basename ${k})
 		mkdir annotated_genomes/${base}/;
 		bakta \
 			--db annotated_genomes/db/ \
@@ -108,10 +105,10 @@ for infile in trimmed_paired/*1_001_trim.fastq.gz
 #run refseq-masher
 conda activate refseq_masher
 mkdir refseq_masher
-for infile in trimmed_paired/*1_001_trim.fastq.gz
+for k in assemblies/*
 	do 
-		base=$(basename ${infile} 1_001_trim.fastq.gz)
+		base=$(basename ${k})
 		refseq_masher \
-			-vv matches assemblies/${base}/contigs.fa > refseq_masher/${base}.tsv
+			-vv matches $k/contigs.fa > refseq_masher/${base}.tsv
 	done
 conda deactivate
