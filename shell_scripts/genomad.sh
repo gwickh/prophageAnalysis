@@ -31,18 +31,41 @@ else
     genomad download-database databases
 fi
 
-#run genomad
+##run vibrgenomad ant
+#create variables for test genomes and ref genomes
 mkdir output_genomad
-for k in assemblies/*
-	do 
-		base=$(basename ${k})
-		mkdir output_genomad/${base}/;
-        genomad \
-            end-to-end \
-            --cleanup \
-            --splits 4 \
-            assemblies/${base}/contigs.fa \
-            output_genomad/${base} \
-            $dbpath
+testbase="/contigs.fa"
+refbase=".fna"
+
+#create function for running genomad
+function genomad_macro () {
+	base=$(basename $k .fna)
+	mkdir output_genomad/$base/;
+    genomad \
+    end-to-end \
+    --cleanup \
+    --splits 4 \
+    assemblies/$1 \
+    output_genomad/$base \
+    $dbpath
+	}
+
+#check whether in directory containing ref genomes or test genomes and iterate vibrant through directory
+if ls assemblies/*/contigs.fa 1> /dev/null 2>&1
+then
+    for k in assemblies/*
+        do
+            echo "running genomad on test genome $k"
+            genomad_macro $testbase 
     done
-mamba deactivate
+elif ls assemblies/*fna* 1> /dev/null 2>&1
+then
+    for k in assemblies/*
+        do
+            echo "running genomad on reference genome $k" 
+            genomad_macro $refbase
+    done
+else
+    echo "no files detected in ./assemblies/"
+fi
+conda deactivate
