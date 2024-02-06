@@ -14,7 +14,7 @@ for env in virsorter
             echo "$env conda env present" 
         else
             echo "$env conda env not present, installing" 
-            mamba create ${env}=2 -n $env -c bioconda -c conda-forge
+            mamba create ${env}=2 -n $env -c bioconda -c conda-forge -y
         fi
     done
 
@@ -30,3 +30,43 @@ else
     mkdir databases/
     virsorter setup -d databases/virsorter_db/ -j 4
 fi
+
+##run virsorter
+#create variables for test genomes and ref genomes
+mkdir output_virsorter
+testbase="/contigs.fa"
+refbase=".fna"
+
+#create function for running virsorter
+function run_virsorter () {
+	base=$(basename $k .fna)
+    mkdir output_virsorter/$base/;
+    virsorter \
+        run \
+        -w output_virsorter/$base \
+        -i assemblies/${base}${1} \
+        --min-length 1500 \
+        -d $dbpath/ \
+        --rm-tmpdir \
+        all
+    }
+
+#check whether in directory containing ref genomes or test genomes and iterate vibrant through directory
+if ls assemblies/*/contigs.fa 1> /dev/null 2>&1
+then
+    for k in assemblies/*
+        do
+            echo "running virsorter on test genome $k"
+            run_virsorter $testbase 
+    done
+elif ls assemblies/*fna* 1> /dev/null 2>&1
+then
+    for k in assemblies/*
+        do
+            echo "running virsorter on reference genome $k" 
+            run_virsorter $refbase
+    done
+else
+    echo "no files detected in ./assemblies/"
+fi
+conda deactivate

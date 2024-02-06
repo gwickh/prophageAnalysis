@@ -14,7 +14,7 @@ for env in genomad
             echo "$env conda env present" 
         else
             echo "$env conda env not present, installing" 
-            mamba create $env -n $env -c bioconda -c conda-forge
+            mamba create $env -n $env -c bioconda -c conda-forge -y
         fi
     done
 
