@@ -22,14 +22,13 @@ for env in vibrant
 echo "checking for vibrant database up to 6 subdirectories deep from home"
 dbpath="$(sudo find ~ -maxdepth 6 -name VIBRANT_setup.py -exec dirname {} \;)"
 
-conda activate vibrant
+conda activate $env
 if [ -e "$dbpath" ]
 then
 	echo "vibrant database detected" 
 else
     echo "vibrant database not detected, downloading to databases/ in current directory"
-    mkdir databases/
-    mkdir databases/vibrant_db
+    mkdir -p databases/vibrant_db
     download-db.sh databases/vibrant_db/
 fi
 

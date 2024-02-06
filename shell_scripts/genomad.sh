@@ -21,7 +21,7 @@ for env in genomad
 #set up genomad database
 dbpath="$(sudo find ~ -maxdepth 4 -type d -name 'genomad_db')"
 
-conda activate genomad
+conda activate $env
 if [ -d "$dbpath" ]
 then
 	echo "Genomad database detected" 
