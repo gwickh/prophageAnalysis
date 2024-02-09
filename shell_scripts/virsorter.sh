@@ -57,7 +57,6 @@ function run_virsorter () {
         --min-length 1500 \
         --rm-tmpdir \
         -d $master_db_dir_path/virsorter_db/
-        all
     }
 
 # #check whether in directory containing ref genomes or test genomes and iterate virsorter through directory
