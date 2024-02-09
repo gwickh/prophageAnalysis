@@ -9,30 +9,39 @@ envpath="$(sudo find ~ -maxdepth 3 -name envs)"
 for env in virsorter
 	do
         if 
-            [ -f $envpath/$env/./bin/$env ] 
+            [ -e "$envpath/$env/" ] 
         then
-            echo "$env conda env present" 
+            echo "$env present at $envpath" 
         else
-            echo "$env conda env not present, installing" 
-            mamba create ${env}=2 -n $env -c bioconda -c conda-forge -y
+            echo "$env not present at $envpath: building from mamba" 
+            mamba create -n virsorter -y -c conda-forge -c bioconda \
+                virsorter=2.2.4 "python>=3.6,<=3.10" scikit-learn=0.22.1 imbalanced-learn pandas seaborn hmmer==3.3 \
+                prodigal screed ruamel.yaml "snakemake>=5.18,<=5.26" click "conda-package-handling<=1.9" numpy=1.23
         fi
     done
 
 #set up virsorter2 database
-dbpath="$(sudo find ~ -maxdepth 4 -type d -name 'virsorter_db')"
+dbpath="$(sudo find ~ -maxdepth 4 -type d -name ${env}_db)"
+master_db_dir_path="$(sudo find ~ -maxdepth 5 -name prophage_databases)"
 
 conda activate $env
 if [ -d "$dbpath" ]
 then
 	echo "Virsorter2 database detected" 
 else
-    echo "Virsorter2 database not detected, downloading to databases/ in current directory"
-    mkdir databases/
-    virsorter setup -d databases/virsorter_db/ -j 4
+    if [ -d "$master_db_dir_path" ]
+    then
+        echo "Virsorter2 database not detected, downloading to $master_db_dir_path directory"
+        $env setup -d $master_db_dir_path/virsorter_db/ -j 4
+    else
+        echo "Virsorter2 database not detected, downloading to prophage_databases/ in current directory"
+        mkdir /prophage_databases/
+        $env setup -d prophage_databases/virsorter_db/ -j 4
+    fi
 fi
 
-##run virsorter
-#create variables for test genomes and ref genomes
+# ##run virsorter
+# #create variables for test and ref genomes
 mkdir output_virsorter
 testbase="/contigs.fa"
 refbase=".fna"
@@ -46,12 +55,12 @@ function run_virsorter () {
         -w output_virsorter/$base \
         -i assemblies/${base}${1} \
         --min-length 1500 \
-        -d $dbpath/ \
         --rm-tmpdir \
+        -d $master_db_dir_path/virsorter_db/
         all
     }
 
-#check whether in directory containing ref genomes or test genomes and iterate vibrant through directory
+# #check whether in directory containing ref genomes or test genomes and iterate virsorter through directory
 if ls assemblies/*/contigs.fa 1> /dev/null 2>&1
 then
     for k in assemblies/*

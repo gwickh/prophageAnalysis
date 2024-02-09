@@ -18,18 +18,27 @@ for env in vibrant
         fi
     done
 
+
 #set up vibrant database
 echo "checking for vibrant database up to 6 subdirectories deep from home"
-dbpath="$(sudo find ~ -maxdepth 6 -name VIBRANT_setup.py -exec dirname {} \;)"
+dbpath="$(sudo find ~ -maxdepth 4 -type d -name ${env}_db)"
+master_db_dir_path="$(sudo find ~ -maxdepth 5 -name prophage_databases)"
 
 conda activate $env
 if [ -e "$dbpath" ]
 then
 	echo "vibrant database detected" 
 else
-    echo "vibrant database not detected, downloading to databases/ in current directory"
-    mkdir -p databases/vibrant_db
-    download-db.sh databases/vibrant_db/
+    if [ -d "$master_db_dir_path" ]
+    then   
+        echo "vibrant database not detected, downloading to $master_db_dir_path directory"
+        mkdir -p $master_db_dir_path/vibrant_db
+        download-db.sh $master_db_dir_path/vibrant_db/
+    else
+        echo "vibrant database not detected, downloading to prophage_databases/ in current directory"
+        mkdir -p prophage_databases/vibrant_db
+        download-db.sh prophage_databases/vibrant_db/
+    fi
 fi
 
 ##run vibrant
@@ -39,7 +48,7 @@ testbase="/contigs.fa"
 refbase=".fna"
 
 #create function for running vibrant
-function vibrant_macro () {
+function run_vibrant () {
 	base=$(basename $k .fna)
     mkdir output_vibrant/$base/;
     VIBRANT_run.py \
@@ -55,14 +64,14 @@ then
     for k in assemblies/*
         do
             echo "running vibrant on test genome $k"
-            vibrant_macro $testbase 
+            run_vibrant $testbase 
     done
 elif ls assemblies/*fna* 1> /dev/null 2>&1
 then
     for k in assemblies/*
         do
             echo "running vibrant on reference genome $k" 
-            vibrant_macro $refbase
+            run_vibrant $refbase
     done
 else
     echo "no files detected in ./assemblies/"
