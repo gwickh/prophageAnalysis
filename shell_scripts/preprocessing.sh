@@ -54,16 +54,18 @@ conda deactivate
 
 #assemble genome with shovill
 conda activate shovill
-mkdir assemblies
+mkdir -p assemblies/assembly_files \
+	assemblies/contigs
 for infile in trimmed_paired/*1_001_trim.fastq.gz;  
 	do 
-		base=$(basename ${infile} 1_001_trim.fastq.gz)  
-		mkdir assemblies/${base}/
+		base=$(basename ${infile} _R1_001_trim.fastq.gz)  
+		mkdir assemblies/assembly_files/${base}/
 		shovill \
 			--R1 ${infile} \
-			--R2 trimmed_paired/${base}2_001_trim.fastq.gz \
-			--outdir assemblies/${base} \
-			--force;
+			--R2 trimmed_paired/${base}_R2_001_trim.fastq.gz \
+			--outdir assemblies/assembly_files/${base} \
+			--force
+		cp assemblies/assembly_files/${base}/contigs.fa assemblies/contigs/${base}_contigs.fa
 	done
 conda deactivate
 
