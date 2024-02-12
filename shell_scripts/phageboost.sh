@@ -4,19 +4,16 @@
 basepath="$(sudo find ~ -maxdepth 4 -name mambaforge)"
 source $basepath/etc/profile.d/conda.sh;
 
-conda create -y -n phageboost python=3.8
-conda activate phageboost
-git clone https://github.com/ku-cbd/PhageBoost.git
-cd PhageBoost/
-git checkout 7333185
-python setup.py bdist_wheel 
-conda install xgboost==1.1.1
-PhageBoost -h
+# conda create -y -n PhageBoost-env python=3.7 xgboost=1.0.2
+# conda activate PhageBoost-env
+# pip install PhageBoost 
+# PhageBoost -h
 
-#run phageboost
-#conda activate phageboost
-#mkdir phageboost
-#for k in *.fna;
-#    do PhageBoost -f $k -o phageboost/;
-#done
-#conda deactivate
+conda create -y -n PhageBoost-env python=3.7
+conda activate PhageBoost-env 
+git clone https://github.com/ku-cbd/PhageBoost.git
+cd PhageBoost/ 
+python setup.py bdist_wheel 
+pip3 install typing_extensions
+pip install --user . 
+PhageBoost -h
