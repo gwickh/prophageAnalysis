@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+#author:    :Gregory Wickham
+#date:      :20240212
+#version    :1.0.0
+#desc       :Script to run genomad for prophage prediction on current directory
+#usage		:bash genomad.sh
+#===========================================================================================================
 
 #find path to conda base environment
 basepath="$(sudo find ~ -maxdepth 4 -name conda.sh)"

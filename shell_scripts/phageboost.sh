@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+#author:    :Gregory Wickham
+#date:      :20240212
+#version    :1.0.0
+#desc       :Script to run phageboost for prophage prediction on current directory
+#usage		:bash phageboost.sh
+#===========================================================================================================
+
 
 #find path to conda base environment
 basepath="$(sudo find ~ -maxdepth 4 -name mambaforge)"
