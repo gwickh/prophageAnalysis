@@ -7,7 +7,7 @@
 #===========================================================================================================
 
 #submit genomes to PHASTER web service
-echo "submitting genomes to PHASTER web service in path $1"
+echo "submitting genomes to PHASTER web server in path $1"
 for k in $1/*.f*
     do
         base=$(basename $k | cut -f 1 -d '.')
