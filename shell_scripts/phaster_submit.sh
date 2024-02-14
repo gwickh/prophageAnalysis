@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #author:    :Gregory Wickham
-#date:      :20240212
+#date:      :20240214
 #version    :1.0.0
 #desc       :Script to submit genomes to PHASTER web service RESTful API
-#usage		:bash phaster.sh
+#usage		:bash phaster_submit.sh <directory>
 #===========================================================================================================
 
 #submit genomes to PHASTER web service
