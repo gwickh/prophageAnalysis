@@ -34,14 +34,15 @@ for k in $1/*.f*
         fi
     done    
 
+#acquire submitted filenames and PHASTER submission ID
 ls *.txt > submitted_genome_names.temp
 sed 's/.txt//g' submitted_genome_names.temp > submitted_genome_names.txt
 mv submitted_genome_names.txt submitted_genome_names.temp
 
 for k in $1/*.txt
-do
-    cut -d'"' -f4 $k >> submitted_genome_IDs.temp
-done
+    do
+        cut -d'"' -f4 $k >> submitted_genome_IDs.temp
+    done
 
 paste -d ',' submitted_genome_names.temp submitted_genome_IDs.temp > submitted_genomes.csv
 rm *.txt *.temp
