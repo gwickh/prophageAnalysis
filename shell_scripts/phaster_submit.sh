@@ -44,7 +44,7 @@ for k in $1/*.txt
         cut -d'"' -f4 $k >> submitted_genome_IDs.temp
     done
 
-echo "genome, submission_ID" > submitted_genomes.csv
+echo "genome,submission_ID" > submitted_genomes.csv
 paste \
     -d ',' \
     submitted_genome_names.temp \
