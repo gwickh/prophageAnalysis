@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #author:    :Gregory Wickham
 #date:      :20240214
-#version    :1.0.1
+#version    :1.0.2
 #desc       :Script to submit genomes to PHASTER web service RESTful API
-#usage		:bash phaster_submit.sh <directory>
+#usage		:bash phaster_submit.sh <directory containing assemblies>
 #===========================================================================================================
 
 #submit genomes to PHASTER web service
@@ -41,7 +41,7 @@ mv submitted_genome_names.txt submitted_genome_names.temp
 
 for k in $1/*.txt
     do
-        cut -d'"' -f4 $k >> submitted_genome_IDs.temp
+        cut -d'"' -f4 "http://phaster.ca/phaster_api?acc=$k" >> submitted_genome_IDs.temp
     done
 
 echo "genome,submission_ID" > submitted_genomes.csv
