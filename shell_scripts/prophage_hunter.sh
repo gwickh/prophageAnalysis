@@ -2,7 +2,7 @@
 #author:    :Gregory Wickham
 #date:      :20240212
 #version    :1.0.0
-#desc       :Script to run prophage_hunter for prophage prediction on current directory
+#desc       :NOT FUNCTIONAL
 #usage		:bash prophage_hunter.sh
 #===========================================================================================================
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #author:    :Gregory Wickham
-#date:      :20240212
-#version    :1.0.0
-#desc       :Script to run VIBRANT for prophage prediction on current directory
-#usage		:bash vibrant.sh
+#date:      :20240215
+#version    :1.1.0
+#desc       :Script to run VIBRANT for prophage prediction on specified directory containing contigs
+#usage		:bash vibrant.sh <directory/containing/contigs>
 #===========================================================================================================
 
 #find path to conda base environment
@@ -24,7 +24,6 @@ for env in vibrant
         fi
     done
 
-
 #set up vibrant database
 echo "checking for vibrant database up to 6 subdirectories deep from home"
 dbpath="$(sudo find ~ -maxdepth 4 -type d -name ${env}_db)"
@@ -33,7 +32,7 @@ master_db_dir_path="$(sudo find ~ -maxdepth 5 -name prophage_databases)"
 conda activate $env
 if [ -e "$dbpath" ]
 then
-	echo "vibrant database detected" 
+	echo "vibrant database detected at $dbpath" 
 else
     if [ -d "$master_db_dir_path" ]
     then   
@@ -47,39 +46,21 @@ else
     fi
 fi
 
-##run vibrant
-#create variables for test genomes and ref genomes
-mkdir output_vibrant
-testbase="/contigs.fa"
-refbase=".fna"
-
-#create function for running vibrant
-function run_vibrant () {
-	base=$(basename $k .fna)
-    mkdir output_vibrant/$base/;
-    VIBRANT_run.py \
-    -i assemblies/${base}${1} \
-    -folder output_vibrant/$base \
-    -d "$(dirname $dbpath)"/databases/ \
-    -m "$(dirname $dbpath)"/files/
-	}
-
-#check whether in directory containing ref genomes or test genomes and iterate vibrant through directory
-if ls assemblies/*/contigs.fa 1> /dev/null 2>&1
+#run vibrant
+if ls *.f* >/dev/null 2>&1
 then
-    for k in assemblies/*
+    for k in $1/*.f*
         do
-            echo "running vibrant on test genome $k"
-            run_vibrant $testbase 
-    done
-elif ls assemblies/*fna* 1> /dev/null 2>&1
-then
-    for k in assemblies/*
-        do
-            echo "running vibrant on reference genome $k" 
-            run_vibrant $refbase
-    done
+            base=$(basename $k | cut -d. -f1)
+            echo "running VIBRANT on genome $base"
+            mkdir -p $1/output_vibrant/$base/;
+            VIBRANT_run.py \
+                -i $k \
+                -folder output_vibrant/$base \
+                -d $dbpath/databases/ \
+                -m $dbpath/files/
+        done
 else
-    echo "no files detected in ./assemblies/"
+    echo "no fasta files detected in $1"
 fi
 conda deactivate

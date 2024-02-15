@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #author:    :Gregory Wickham
 #date:      :20240212
-#version    :1.0.0
-#desc       :Script to run genomad for prophage prediction on current directory
-#usage		:bash genomad.sh
+#version    :1.1.0
+#desc       :Script to run genomad for prophage prediction on specified directory containing contigs
+#usage		:bash genomad.sh <directory/containing/contigs>
 #===========================================================================================================
 
 #find path to conda base environment
@@ -25,18 +25,6 @@ for env in genomad
     done
 
 #set up genomad database
-dbpath="$(sudo find ~ -maxdepth 4 -type d -name 'genomad_db')"
-
-conda activate $env
-if [ -d "$dbpath" ]
-then
-	echo "Genomad database detected" 
-else
-    echo "Genomad database not detected, downloading to prophage_databases/ directory in current directory"
-    mkdir prophage_databases 
-    genomad download-database prophage_databases
-fi
-
 echo "checking for vibrant database up to 6 subdirectories deep from home"
 dbpath="$(sudo find ~ -maxdepth 4 -type d -name ${env}_db)"
 master_db_dir_path="$(sudo find ~ -maxdepth 5 -name prophage_databases)"
@@ -57,41 +45,23 @@ else
     fi
 fi
 
-##run vibrgenomad ant
-#create variables for test genomes and ref genomes
-mkdir output_genomad
-testbase="/contigs.fa"
-refbase=".fna"
-
-#create function for running genomad
-function run_genomad () {
-	base=$(basename $k .fna)
-	mkdir output_genomad/$base/;
-    genomad \
-    end-to-end \
-    --cleanup \
-    --splits 4 \
-    assemblies/$base$1 \
-    output_genomad/$base \
-    $dbpath
-	}
-
-#check whether in directory containing ref genomes or test genomes and iterate vibrant through directory
-if ls assemblies/*/contigs.fa 1> /dev/null 2>&1
+#run genomad
+if ls *.f* >/dev/null 2>&1
 then
-    for k in assemblies/*
+    for k in $1/*.f*
         do
-            echo "running genomad on test genome $k"
-            run_genomad $testbase 
-    done
-elif ls assemblies/*fna* 1> /dev/null 2>&1
-then
-    for k in assemblies/*
-        do
-            echo "running genomad on reference genome $k" 
-            run_virsorter $refbase
-    done
+            base=$(basename $k | cut -d. -f1)
+            echo "running genomad on genome $base"
+            mkdir -p $1/output_genomad/$base/;
+            genomad \
+                end-to-end \
+                --cleanup \
+                --splits 4 \
+                $k \
+                output_genomad/$base \
+                $dbpath
+        done
 else
-    echo "no files detected in ./assemblies/"
+    echo "no fasta files detected in $1"
 fi
 conda deactivate

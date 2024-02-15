@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #author:    :Gregory Wickham
-#date:      :20240212
-#version    :1.0.0
-#desc       :Script to run virsorter for prophage prediction on current directory
-#usage		:bash virsorter.sh
+#date:      :20240215
+#version    :1.1.0
+#desc       :Script to run virsorter for prophage prediction on specified directory containing contigs
+#usage		:bash virsorter.sh <directory/containing/contigs/>
 #===========================================================================================================
 
 #find path to conda base environment
@@ -40,47 +40,29 @@ else
         echo "Virsorter2 database not detected, downloading to $master_db_dir_path directory"
         $env setup -d $master_db_dir_path/virsorter_db/ -j 4
     else
-        echo "Virsorter2 database not detected, downloading to prophage_databases/ in current directory"
-        mkdir /prophage_databases/
-        $env setup -d prophage_databases/virsorter_db/ -j 4
+        echo "Virsorter2 database not detected, downloading to prophage_databases/ in $1 directory"
+        mkdir $1/prophage_databases/
+        $env setup -d $1/prophage_databases/virsorter_db/ -j 4
     fi
 fi
 
-# ##run virsorter
-# #create variables for test and ref genomes
-mkdir output_virsorter
-testbase="/contigs.fa"
-refbase=".fna"
-
-#create function for running virsorter
-function run_virsorter () {
-	base=$(basename $k .fna)
-    mkdir output_virsorter/$base/;
-    virsorter \
-        run \
-        -w output_virsorter/$base \
-        -i assemblies/${base}${1} \
-        --min-length 1500 \
-        --rm-tmpdir \
-        -d $master_db_dir_path/virsorter_db/
-    }
-
-# #check whether in directory containing ref genomes or test genomes and iterate virsorter through directory
-if ls assemblies/*/contigs.fa 1> /dev/null 2>&1
+#run virsorter
+if ls *.f* >/dev/null 2>&1
 then
-    for k in assemblies/*
+    for k in $1/*.f*
         do
-            echo "running virsorter on test genome $k"
-            run_virsorter $testbase 
-    done
-elif ls assemblies/*fna* 1> /dev/null 2>&1
-then
-    for k in assemblies/*
-        do
-            echo "running virsorter on reference genome $k" 
-            run_virsorter $refbase
+            base=$(basename $k | cut -d. -f1)
+            echo "running virsorter on genome $base"
+            mkdir -p $1/output_virsorter/$base/;
+            virsorter \
+                run \
+                -w $1/output_virsorter/$base \
+                -i $k \
+                --min-length 1500 \
+                --rm-tmpdir \
+                -d $master_db_dir_path/virsorter_db/
     done
 else
-    echo "no files detected in ./assemblies/"
+    echo "no fasta files detected in $1"
 fi
 conda deactivate
