@@ -46,7 +46,7 @@ else
 fi
 
 #run genomad
-if ls *.f* >/dev/null 2>&1
+if ( ls *.f* >/dev/null 2>&1 )
 then
     for k in $1/*.f*
         do
@@ -64,4 +64,4 @@ then
 else
     echo "no fasta files detected in $1"
 fi
-conda deactivate
+conda 

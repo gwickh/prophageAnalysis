@@ -47,7 +47,7 @@ else
 fi
 
 #run vibrant
-if ls *.f* >/dev/null 2>&1
+if ( ls *.f* >/dev/null 2>&1 )
 then
     for k in $1/*.f*
         do

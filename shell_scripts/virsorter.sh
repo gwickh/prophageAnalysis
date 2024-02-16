@@ -47,20 +47,21 @@ else
 fi
 
 #run virsorter
-if ls *.f* >/dev/null 2>&1
+if ( ls *.f* >/dev/null 2>&1 )
 then
     for k in $1/*.f*
         do
-            base=$(basename $k | cut -d. -f1)
-            echo "running virsorter on genome $base"
-            mkdir -p $1/output_virsorter/$base/;
-            virsorter \
-                run \
-                -w $1/output_virsorter/$base \
-                -i $k \
-                --min-length 1500 \
-                --rm-tmpdir \
-                -d $master_db_dir_path/virsorter_db/
+            echo "test"
+            # base=$(basename $k | cut -d. -f1)
+            # echo "running virsorter on genome $base"
+            # mkdir -p $1/output_virsorter/$base/;
+            # virsorter \
+            #     run \
+            #     -w $1/output_virsorter/$base \
+            #     -i $k \
+            #     --min-length 1500 \
+            #     --rm-tmpdir \
+            #     -d $master_db_dir_path/virsorter_db/
     done
 else
     echo "no fasta files detected in $1"
