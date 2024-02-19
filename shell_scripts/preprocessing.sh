@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #author:    :Gregory Wickham
 #date:      :20240212
-#version    :1.0.0
+#version    :1.1.0
 #desc       :Script to perform standard preprocessing of genomes, including read trimming, QC, assembly,
 #			 annotation and closest reference genome match
-#usage		:bash preprocessing.sh
+#usage		:bash preprocessing.sh <directory/with/reads>
 #===========================================================================================================
 
 #find path to conda base environment
@@ -26,7 +26,7 @@ for env in {trimmomatic,shovill,quast,bakta,refseq_masher,multiqc,fastqc}
 
 #loop trimmomatic through directory
 conda activate trimmomatic
-for infile in *1_001.fastq.gz 
+for infile in $1/*1_001.fastq.gz 
 	do base=$(basename ${infile} 1_001.fastq.gz)
 	trimmomatic \
 		PE \
@@ -36,88 +36,88 @@ for infile in *1_001.fastq.gz
 		${base}1_001_unpaired_trim.fastq.gz \
 		${base}2_001_trim.fastq.gz \
 		${base}2_001_unpaired_trim.fastq.gz \
-		LEADING:3 TRAILING:3 MINLEN:36 SLIDINGWINDOW:4:15;  
-	done;
-mkdir trimmed_unpaired
-mv *unpaired_trim.fastq.gz trimmed_unpaired
-mkdir trimmed_paired
-mv *_trim.fastq.gz trimmed_paired
-mkdir raw_reads
-mv *.fastq.gz raw_reads
+		LEADING:3 TRAILING:3 MINLEN:36 SLIDINGWINDOW:4:15
+	done
+mkdir -p $1/1trimmed_unpaired
+mv $1/*unpaired_trim.fastq.gz $1/trimmed_unpaired
+mkdir -p $1/trimmed_paired
+mv $1/*_trim.fastq.gz $1/trimmed_paired
+mkdir -p $1/raw_reads
+mv $1/*.fastq.gz $1/raw_reads
 conda deactivate
 
 #run fastqc on trimmed reads and aggregate with multiqc
 conda activate fastqc
-mkdir fastqc_reports
-for k in trimmed_paired/*_001_trim.fastq.gz; 
+mkdir -p $1/fastqc_reports
+for k in $1/trimmed_paired/*_001_trim.fastq.gz
 	do 
-		fastqc $k -o fastqc_reports/; 
-		echo $k; 
+		fastqc $k -o fastqc_reports/
+		echo $k
 	done
 conda deactivate
 conda activate multiqc
-multiqc fastqc_reports/ -o fastqc_reports/
+multiqc $1/fastqc_reports/ -o $1/fastqc_reports/
 conda deactivate
 
 #assemble genome with shovill
 conda activate shovill
-mkdir -p assemblies/assembly_files \
-	assemblies/contigs
-for infile in trimmed_paired/*1_001_trim.fastq.gz;  
+mkdir -p $1/assemblies/assembly_files \
+	$1/assemblies/contigs
+for infile in $1/trimmed_paired/*1_001_trim.fastq.gz
 	do 
 		base=$(basename ${infile} _R1_001_trim.fastq.gz)  
 		mkdir assemblies/assembly_files/${base}/
 		shovill \
 			--R1 ${infile} \
-			--R2 trimmed_paired/${base}_R2_001_trim.fastq.gz \
-			--outdir assemblies/assembly_files/${base} \
+			--R2 $1/trimmed_paired/${base}_R2_001_trim.fastq.gz \
+			--outdir $1/assemblies/assembly_files/${base} \
 			--force
-		cp assemblies/assembly_files/${base}/contigs.fa assemblies/contigs/${base}_contigs.fa
+		cp $1/assemblies/assembly_files/${base}/contigs.fa $1/assemblies/contigs/${base}_contigs.fa
 	done
 conda deactivate
 
 #assess assembly quality with QUAST
 conda activate quast
-mkdir quast_reports
-for k in assemblies/*
+mkdir $1/quast_reports
+for k in $1/assemblies/*
 	do 
 		base=$(basename ${k})
 		mv "${k}" "${k//\_R/}"
 		quast \
-			assemblies/${base}/contigs.fa \
-			-o quast_reports/${base};
+			$1/assemblies/${base}/contigs.fa \
+			-o $1/quast_reports/${base};
 	done
 conda deactivate
 
 #annotate genome with bakta
 conda activate bakta
-mkdir annotated_genomes
-if [ -d annotated_genomes/db ] 
+mkdir -p $1/annotated_genomes
+if [ -d $1/annotated_genomes/db ] 
 then
 	echo "Bakta database detected" 
 else
-	bakta_db download --output annotated_genomes/ --type full
+	bakta_db download --output $1/annotated_genomes/ --type full
 fi
-for k in assemblies/*
+for k in $1/assemblies/*
 	do 
 		base=$(basename ${k})
-		mkdir annotated_genomes/${base}/;
+		mkdir annotated_genomes/${base}/
 		bakta \
-			--db annotated_genomes/db/ \
+			--db $1/annotated_genomes/db/ \
 			--verbose \
 			--force \
-			--output annotated_genomes/${base} \
-			assemblies/${base}/contigs.fa;
+			--output $1/annotated_genomes/${base} \
+			$1/assemblies/${base}/contigs.fa;
 	done
  conda deactivate
 
 #run refseq-masher
 conda activate refseq_masher
-mkdir refseq_masher
-for k in assemblies/*
+mkdir -p $1/refseq_masher
+for k in $1/assemblies/*
 	do 
 		base=$(basename ${k})
 		refseq_masher \
-			-vv matches $k/contigs.fa > refseq_masher/${base}.tsv
+			-vv matches $k/contigs.fa > $1/refseq_masher/${base}.tsv
 	done
 conda deactivate
