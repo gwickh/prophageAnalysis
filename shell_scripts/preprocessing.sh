@@ -1,54 +1,29 @@
 #!/usr/bin/env bash
 #author:    :Gregory Wickham
 #date:      :20240219
-#version    :1.2.0
+#version    :1.2.1
 #desc       :Script to perform standard preprocessing of genomes, including read trimming, QC, assembly,
 #			 annotation and closest reference genome match
-#usage		:bash preprocessing.sh --reads OR --contigs --trim --assemble --annotate --refseq --help 
+#usage		:bash preprocessing.sh --input  <reads or contigs>  --trim --assemble --annotate --refseq --help 
 #===========================================================================================================
 
-# while [ $# -gt 0 ]
-# 	do
-# 		case $1 in
-#			-q | --reads) Q=$2 ;;
-#			-c | --contigs) C=$2 ;;
-# 			-t | --trim) T="$2" ;;
-# 			-a | --assemble) A="$2" ;;
-# 			-n | --annotate) N="$2" ;;
-# 			-r | --refseq) R="$2" ;;
-#			-? | --help)  H="$2" ;;
-#   	esac
-#   	shift
-# 	done
-
-helpFunction()
-{
-   echo ""
-   echo "Usage: $0 -a parameterA -b parameterB -c parameterC"
-   echo -e "\t-a Description of what is parameterA"
-   echo -e "\t-b Description of what is parameterB"
-   echo -e "\t-c Description of what is parameterC"
-   exit 1 # Exit script after printing help
+#create function to obtain requirements from conda
+download_reqs() {
+	source "$(sudo find ~ -maxdepth 4 -name conda.sh)" #find path to conda base environment
+	envpath="$(sudo find ~ -maxdepth 3 -name envs)"
+	for env in $requirements
+		do
+			if 
+				[ -f $envpath/$env/./bin/$env ] 
+			then
+				echo "$env conda env present" 
+			else
+				conda create $env -n $env -c bioconda -c conda-forge
+			fi
+	done
 }
 
-#find path to conda base environment
-basepath="$(sudo find ~ -maxdepth 4 -name conda.sh)"
-source $basepath
-
-#create conda environments if not already present
-envpath="$(sudo find ~ -maxdepth 3 -name envs)"
-for env in {trimmomatic,shovill,quast,bakta,refseq_masher,multiqc,fastqc}
-	do
-		if 
-        	[ -f $envpath/$env/./bin/$env ] 
-		then
-			echo "$env conda env present" 
-		else
-			conda create $env -n $env -c bioconda -c conda-forge
-		fi
-	done
-
-# loop trimmomatic through directory
+# #loop trimmomatic through directory
 # conda activate trimmomatic
 # for infile in $1/*1_001.fastq.gz 
 # 	do base=$(basename ${infile} 1_001.fastq.gz)
@@ -100,7 +75,7 @@ for env in {trimmomatic,shovill,quast,bakta,refseq_masher,multiqc,fastqc}
 # 	done
 # conda deactivate
 
-#assess assembly quality with QUAST
+# #assess assembly quality with QUAST
 # conda activate quast
 # mkdir $1/quast_reports
 # for k in $1/assemblies/contigs/*.f*
@@ -113,36 +88,121 @@ for env in {trimmomatic,shovill,quast,bakta,refseq_masher,multiqc,fastqc}
 # 	done
 # conda deactivate
 
-#annotate genome with bakta
-conda activate bakta
-dbpath="$(sudo find ~ -maxdepth 6 -type d -name bakta.db)"
-if [ -d $dbpath ] 
-then
-	echo "Bakta database detected at $dbpath" 
-else
-	echo "Bakta database downloading to $1" 
-	mkdir -p $1/annotated_genomes
-	bakta_db download --output $1/annotated_genomes/ --type full
+#set arguments
+ARGS=$(getopt --options itanrh --long "input,trim,assemble,annotate,refseq,help" -- "$@")
+
+eval set --"$ARGS"
+
+input="false"
+trim="false"
+assemble="false"
+annotate="false"
+refseq="false"
+help="false"
+
+while true
+	do
+		case "$1" in
+			-i|--input)
+				input="true"
+				shift;;
+			-t|--trim)
+				trim="true"
+				shift;;
+			-a|--assemble)
+				assemble="true"
+				shift;;
+			-n|--annotate)
+				annotate="true"
+				shift;;
+			-r|--refseq)
+				refseq="true"
+				shift;;
+			-h|--help)
+				help="true"
+				shift;;
+			--)
+				break;;
+			*)
+				echo "Unknown option specified" 
+				echo "Options: [-i --input <reads or contigs>] [-t --trim] [-a --assemble] \
+				[-n --annotate] [-r --refseq] [-h --help]"
+				exit 1;;
+		esac
+	done
+
+if [ "$input" == true ]
+	then
+		input
 fi
-for k in $1/assemblies/contigs/*.f*
-	do 
-		base=$(basename $k | cut -d. -f1)
-		mkdir annotated_genomes/${base}/
-		bakta \
+
+if [ "$trim" == true ]
+	then
+		trim
+fi
+
+if [ "$assemble" == true ]
+	then
+		assemble
+fi
+
+#annotate genome with bakta
+if [ "$annotate" == true ]
+then
+	requirements=bakta
+	download_reqs
+	conda activate bakta
+
+	dbpath="$(sudo find ~ -maxdepth 6 -name bakta.db)"
+	if [ -e $dbpath ] 
+	then
+		echo "Bakta database detected at $dbpath" 
+	else
+		echo "Bakta database downloading to $1" 
+		mkdir -p $1/annotated_genomes
+		bakta_db download --output $1/annotated_genomes/ --type full
+	fi
+	for k in $1/assemblies/contigs/*.f*
+		do 
+			base=$(basename $k | cut -d. -f1)
+			mkdir -p annotated_genomes/${base}/
+			bakta \
 			--db $dbpath/.. \
 			--verbose \
 			--force \
 			--output $1/annotated_genomes/${base} \
 			$k;
-	done
- conda deactivate
+		done
+	conda deactivate
+fi
 
-#run refseq-masher
-conda activate refseq_masher
-mkdir -p $1/refseq_masher
-for k in $1/assemblies/contigs/*.f*
-	do 
-		base=$(basename $k | cut -d. -f1)
-		refseq_masher -vv matches $k > $1/refseq_masher/${base}.tsv
+if [ "$refseq" == true ]
+then
+	requirements=refseq_masher
+	download_reqs
+	conda activate refseq_masher
+	mkdir -p $1/refseq_masher
+	for k in $1/assemblies/contigs/*.f*
+		do 
+				base=$(basename $k | cut -d. -f1)
+				refseq_masher -vv matches $k > $1/refseq_masher/${base}.tsv
 	done
-conda deactivate
+	conda deactivate
+fi
+
+if [ "$help" == true ]
+then
+	echo "Script to perform standard preprocessing of genomes, including read trimming, QC, assembly"
+	echo "annotation and detect closest reference genome match"
+	echo ""
+	echo "Options: 	[-i --input <reads or contigs>] [-t --trim] [-a --assemble] [-n --annotate]"
+	echo "		[-r --refseq] [-h --help]" 
+	echo ""
+	echo "-i --input	: directory containing raw reads or assembled contigs"
+	echo "-t --trim	: filter .fastq files with trimmomatic and assess read quality with fastqc"
+	echo "-a --assemble	: assemble trimmed reads with shovill SPAdes and assess assembly quality with quast"
+	echo "-n --annotate	: annotate assemblies with bakta"
+	echo "-r --refseq	: run refseq to detect closest reference match"
+	echo "-h --help	: show options"
+	exit 1
+fi
