@@ -85,7 +85,7 @@ then
 	then
 		echo "fasta file detected"
 	else
-		echo ".fasta/.fa/.fna or .fastq not detected in $2"
+		echo ".fasta/.fa/.fna or .fastq not detected in $2 or subdirectories"
 		exit 1
 	fi
 fi
