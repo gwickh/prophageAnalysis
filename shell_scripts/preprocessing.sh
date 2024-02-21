@@ -148,7 +148,7 @@ then
 	mkdir -p $fastq/fastqc_reports
 	for k in $fastq/trimmed_paired/*_001_trim.fastq.gz
 		do
-			base=$(basename $k _R1_001.fastq.gz)-- 
+			base=$(basename $k _R1_001.fastq.gz) 
 			alert="RUNNING FASTQC ON $base"		
 			alert_banner
 			fastqc $k -o fastqc_reports/
