@@ -1,97 +1,41 @@
 #!/usr/bin/env bash
 #author:    :Gregory Wickham
-#date:      :20240219
-#version    :1.2.1
-#desc       :Script to perform standard preprocessing of genomes, including read trimming, QC, assembly,
-#			 annotation and closest reference genome match
-#usage		:bash preprocessing.sh --input  <reads or contigs>  --trim --assemble --annotate --refseq --help 
+#date:      :20240221
+#version    :1.2.2
+#desc       :Script to perform batch preprocessing of genomes from short-read sequencing, including read
+#			 trimming, QC, assembly, annotation and seeking closest reference genome match
+#usage		:bash preprocessing.sh --input  <directory/with/reads/or/contigs>  --trim --assemble 
+#			 --annotate --refseq --help 
 #===========================================================================================================
+source "$(sudo find ~ -maxdepth 4 -name conda.sh)" #find path to conda base environment
+
+alert_banner() {
+	echo "####################################################################################################"
+	echo ""
+	echo "$alert"	
+	echo ""
+	echo "####################################################################################################"
+}
+
+alert="RUNNING GENOME PREPROCESSING PIPELINE WITH OPTIONS: $@"	
+alert_banner
 
 #create function to obtain requirements from conda
 download_reqs() {
-	source "$(sudo find ~ -maxdepth 4 -name conda.sh)" #find path to conda base environment
 	envpath="$(sudo find ~ -maxdepth 3 -name envs)"
-	for env in $requirements
-		do
-			if 
-				[ -f $envpath/$env/./bin/$env ] 
-			then
-				echo "$env conda env present" 
-			else
-				conda create $env -n $env -c bioconda -c conda-forge
-			fi
-	done
+	if [ -f $envpath/$env/./bin/$env ] 
+	then
+		echo "$env conda env present" 
+	else
+		echo "creating conda env: $env" 
+		conda create $env -n $env -c bioconda -c conda-forge
+	fi
 }
 
-# #loop trimmomatic through directory
-# conda activate trimmomatic
-# for infile in $1/*1_001.fastq.gz 
-# 	do base=$(basename ${infile} 1_001.fastq.gz)
-# 	trimmomatic \
-# 		PE \
-# 		${infile} \
-# 		${base}2_001.fastq.gz \
-# 		${base}1_001_trim.fastq.gz \
-# 		${base}1_001_unpaired_trim.fastq.gz \
-# 		${base}2_001_trim.fastq.gz \
-# 		${base}2_001_unpaired_trim.fastq.gz \
-# 		LEADING:3 TRAILING:3 MINLEN:36 SLIDINGWINDOW:4:15
-# 	done
-# mkdir -p $1/trimmed_unpaired
-# mv $1/*unpaired_trim.fastq.gz $1/trimmed_unpaired
-# mkdir -p $1/trimmed_paired
-# mv $1/*_trim.fastq.gz $1/trimmed_paired
-# mkdir -p $1/raw_reads
-# mv $1/*.fastq.gz $1/raw_reads
-# conda deactivate
-
-# #run fastqc on trimmed reads and aggregate with multiqc
-# conda activate fastqc
-# mkdir -p $1/fastqc_reports
-# for k in $1/trimmed_paired/*_001_trim.fastq.gz
-# 	do 
-# 		fastqc $k -o fastqc_reports/
-# 		echo $k
-# 	done
-# conda deactivate
-# conda activate multiqc
-# multiqc $1/fastqc_reports/ -o $1/fastqc_reports/
-# conda deactivate
-
-# #assemble genome with shovill
-# conda activate shovill
-# mkdir -p $1/assemblies/assembly_files \
-# 	$1/assemblies/contigs
-# for infile in $1/trimmed_paired/*1_001_trim.fastq.gz
-# 	do 
-# 		base=$(basename ${infile} _R1_001_trim.fastq.gz)  
-# 		mkdir assemblies/assembly_files/${base}/
-# 		shovill \
-# 			--R1 ${infile} \
-# 			--R2 $1/trimmed_paired/${base}_R2_001_trim.fastq.gz \
-# 			--outdir $1/assemblies/assembly_files/${base} \
-# 			--force
-# 		cp $1/assemblies/assembly_files/${base}/contigs.fa $1/assemblies/contigs/${base}_contigs.fa
-# 	done
-# conda deactivate
-
-# #assess assembly quality with QUAST
-# conda activate quast
-# mkdir $1/quast_reports
-# for k in $1/assemblies/contigs/*.f*
-# 	do 
-# 		base=$(basename $k | cut -d. -f1)
-# 		mv "${k}" "${k//\_R/}"
-# 		quast \
-# 			$k \
-# 			-o $1/quast_reports/${base};
-# 	done
-# conda deactivate
-
 #set arguments
-ARGS=$(getopt --options itanrh --long "input,trim,assemble,annotate,refseq,help" -- "$@")
+ARGS=$(getopt --options i:tanrh --long "input,trim,assemble,annotate,refseq,help" -- "$@")
 
-eval set --"$ARGS"
+eval set -- "$ARGS"
 
 input="false"
 trim="false"
@@ -132,64 +76,250 @@ while true
 	done
 
 if [ "$input" == true ]
+then
+	if ( ls $2/*.fastq.gz >/dev/null 2>&1 )
 	then
-		input
+		echo "fastq file detected"
+		fastq=$2
+	elif ( ls $2/*a >/dev/null 2>&1 )
+	then
+		echo "fasta file detected"
+		fasta=$2
+	elif ( ls $2/*/*a >/dev/null 2>&1 ) || ( ls $2/*/*/*a >/dev/null 2>&1 )
+	then
+		echo "fasta file detected in subdirectory"
+		fasta=$2
+	elif ( ls $2/*/*q.gz >/dev/null 2>&1 ) || ( ls $2/*/*/*q.gz >/dev/null 2>&1 )
+	then
+		echo "fastq file detected in subdirectory"
+		fastq=$2
+	else
+		echo ".fasta/.fa/.fna or .fastq not detected in $2"
+		exit 1
+	fi
 fi
 
 if [ "$trim" == true ]
+then
+	#create conda env if not already present
+	for env in {trimmomatic,fastqc,multiqc}
+		do
+			download_reqs
+		done
+	#loop trimmomatic through directory
+	conda activate trimmomatic
+	if ( ls $fastq/*1_001.fastq.gz >/dev/null 2>&1 )
 	then
-		trim
+		for k in $fastq/*1_001.fastq.gz 
+			do 
+				base=$(basename $k _R1_001.fastq.gz)
+				alert="RUNNING TRIMMOMATIC ON $base"	
+				alert_banner
+				trimmomatic \
+					PE \
+					$k \
+					${base}_R2_001.fastq.gz \
+					${base}_R1_001_trim.fastq.gz \
+					${base}_R1_001_unpaired_trim.fastq.gz \
+					${base}_R2_001_trim.fastq.gz \
+					${base}_R2_001_unpaired_trim.fastq.gz \
+					LEADING:3 TRAILING:3 MINLEN:36 SLIDINGWINDOW:4:15
+			done
+		mkdir -p $fastq/trimmed_unpaired
+		mv $fastq/*unpaired_trim.fastq.gz $fastq/trimmed_unpaired
+		mkdir -p $fastq/trimmed_paired
+		mv $fastq/*_trim.fastq.gz $fastq/trimmed_paired
+		mkdir -p $fastq/raw_reads
+		mv $fastq/*.fastq.gz $fastq/raw_reads
+		conda deactivate
+	elif ( ls $fastq/*1_001.fastq.gz >/dev/null 2>&1 )
+	then
+		echo "fastq filenames not in correct format"
+		echo "R1 must be as *1_001.fastq.gz"
+		echo "R2 must be as *2_001.fastq.gz"
+		exit 1
+	else
+		echo ".fastq.gz files not detected"
+		exit 1
+	fi
+
+	#run fastqc on trimmed reads
+	conda activate fastqc
+	mkdir -p $fastq/fastqc_reports
+	for k in $fastq/trimmed_paired/*_001_trim.fastq.gz
+		do
+			base=$(basename $k _R1_001.fastq.gz)-- 
+			alert="RUNNING FASTQC ON $base"		
+			alert_banner
+			fastqc $k -o fastqc_reports/
+		done
+	conda deactivate
+
+	#aggregate with multiqc
+	conda activate multiqc
+	alert="AGGREGATING FASTQC REPORTS WITH MULTIQC"
+	alert_banner
+	multiqc $fastq/fastqc_reports/ -o $fastq/fastqc_reports/
+	conda deactivate
 fi
 
 if [ "$assemble" == true ]
+then
+	#create conda env if not already present
+    for env in {shovill,quast}
+		do
+			download_reqs
+		done
+	#assemble genome with shovill
+	conda activate shovill
+	mkdir -p $fastq/assemblies/assembly_files $fastq/assemblies/contigs
+	if [ -d $fastq/trimmed_paired/ ]
 	then
-		assemble
+		for k in $fastq/trimmed_paired/*1_001_trim.fastq.gz
+			do 
+				base=$(basename $k _R1_001_trim.fastq.gz)
+				alert="ASSEMBLING $base WITH SHOVILL" 
+				alert_banner
+				mkdir assemblies/assembly_files/$base
+				shovill \
+					--R1 $k \
+					--R2 $fastq/trimmed_paired/${base}_R2_001_trim.fastq.gz \
+					--outdir $fastq/assemblies/assembly_files/$base \
+					--force
+				cp $fastq/assemblies/assembly_files/${base}/contigs.fa $fastq/assemblies/contigs/${base}_contigs.fa
+			done
+	elif ( ls $fastq/*fastq.gz >/dev/null 2>&1 )
+	then
+		for k in $fastq/*1_001_trim.fastq.gz
+			do 
+				base=$(basename $k _R1_001_trim.fastq.gz)  
+				alert="ASSEMBLING $base WITH SHOVILL" 
+				alert_banner
+				mkdir assemblies/assembly_files/$base
+				shovill \
+					--R1 $k \
+					--R2 $fastq/${base}_R2_001_trim.fastq.gz \
+					--outdir $fastq/assemblies/assembly_files/$base \
+					--force
+				cp $fastq/assemblies/assembly_files/${base}/contigs.fa $fastq/assemblies/contigs/${base}_contigs.fa
+			done
+	else
+		echo  "no .fastq.gz files found in current directory or subdirectory"
+		exit 1
+	fi
+	conda deactivate
+
+	#assess assembly quality with QUAST
+	conda activate quast
+	mkdir $fastq/quast_reports
+	for k in $fastq/assemblies/contigs/*.f*
+		do 
+			base=$(basename $k | cut -d. -f1)
+			alert="ASSESSING ASSEMBLY QUALITY OF $base WITH QUAST"		
+			alert_banner
+			mv "${k}" "${k//\_R/}"
+			quast \
+				$k \
+				-o $fastq/quast_reports/$base;
+		done
+	conda deactivate
 fi
 
-#annotate genome with bakta
+##annotate genome with bakta
 if [ "$annotate" == true ]
 then
-	requirements=bakta
-	download_reqs
-	conda activate bakta
-
+	#create conda env if not already present
+	for env in bakta
+		do
+			download_reqs
+		done
+	#download bakta db if not already present
+	echo "looking for bakta database up to 6 directories deep from home"
 	dbpath="$(sudo find ~ -maxdepth 6 -name bakta.db)"
 	if [ -e $dbpath ] 
 	then
 		echo "Bakta database detected at $dbpath" 
 	else
-		echo "Bakta database downloading to $1" 
+		echo "Bakta database downloading to $fasta" 
 		mkdir -p $1/annotated_genomes
 		bakta_db download --output $1/annotated_genomes/ --type full
 	fi
-	for k in $1/assemblies/contigs/*.f*
-		do 
-			base=$(basename $k | cut -d. -f1)
-			mkdir -p annotated_genomes/${base}/
-			bakta \
-			--db $dbpath/.. \
-			--verbose \
-			--force \
-			--output $1/annotated_genomes/${base} \
-			$k;
-		done
+	#run bakta
+	conda activate bakta
+	if [ -d $fasta/assemblies/contigs/ ]
+	then
+		for k in $fasta/assemblies/contigs/*.f*
+			do 
+				base=$(basename $k | cut -d. -f1)
+				alert="ANNOTATING $k WITH BAKTA"	
+				alert_banner
+				mkdir -p $fasta/annotated/$base/
+				bakta \
+					--db $dbpath/.. \
+					--verbose \
+					--force \
+					--output $fasta/annotated_genomes/$base \
+					$k
+			done
+	elif ( ls $fasta/*.fa >/dev/null 2>&1 ) || ( ls $fasta/*.fna >/dev/null 2>&1 ) || ( ls $fasta/*.fasta >/dev/null 2>&1 )
+	then
+		for k in $fasta/*.f*
+			do 
+				base=$(basename $k | cut -d. -f1)
+				alert="ANNOTATING $k WITH BAKTA"	
+				alert_banner
+				mkdir -p $fasta/annotated/base/
+				bakta \
+					--db $dbpath/.. \
+					--verbose \
+					--force \
+					--output $fasta/annotated_genomes/$base \
+					$k
+			done
+	else
+		echo  "no fasta files found in current directory or subdirectory"
+		exit 1
+	fi
 	conda deactivate
 fi
 
+##run refseq masher
 if [ "$refseq" == true ]
 then
-	requirements=refseq_masher
-	download_reqs
+	#create conda env if not already present
+	for env in refseq_masher
+		do
+			download_reqs
+		done
+	#run refseq
 	conda activate refseq_masher
-	mkdir -p $1/refseq_masher
-	for k in $1/assemblies/contigs/*.f*
-		do 
+	mkdir -p $fasta/refseq_masher
+	if [ -d $fasta/assemblies/contigs/ ]
+	then
+		for k in $fasta/assemblies/contigs/*.f*
+			do 
 				base=$(basename $k | cut -d. -f1)
-				refseq_masher -vv matches $k > $1/refseq_masher/${base}.tsv
-	done
+				alert="RUNNING REFSEQ MASHER ON $k"		
+				alert_banner
+				refseq_masher -vv matches $k > $fasta/refseq_masher/$base.tsv
+		done
+	elif ( ls $fasta/*.fa >/dev/null 2>&1 ) || ( ls $fasta/*.fna >/dev/null 2>&1 ) || ( ls $fasta/*.fasta >/dev/null 2>&1 )
+	then
+		for k in $fasta/*.f*
+			do 
+				base=$(basename $k | cut -d. -f1)
+				alert="RUNNING REFSEQ MASHER ON $k"		
+				alert_banner
+				refseq_masher -vv matches $k > $fasta/refseq_masher/$base.tsv
+		done
+	else
+		echo  "no fasta files found in current directory or subdirectory"
+		exit 1
+	fi
 	conda deactivate
 fi
 
+##create help message
 if [ "$help" == true ]
 then
 	echo "Script to perform standard preprocessing of genomes, including read trimming, QC, assembly"
