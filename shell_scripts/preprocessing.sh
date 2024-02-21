@@ -77,22 +77,13 @@ while true
 
 if [ "$input" == true ]
 then
-	if ( ls $2/*.fastq.gz >/dev/null 2>&1 )
+	fasta=$2
+	if ( ls $2/*.fastq.gz >/dev/null 2>&1 ) || ( ls $2/*/*q.gz >/dev/null 2>&1 ) || ( ls $2/*/*/*q.gz >/dev/null 2>&1 )
 	then
 		echo "fastq file detected"
-		fastq=$2
-	elif ( ls $2/*a >/dev/null 2>&1 )
+	elif ( ls $2/*a >/dev/null 2>&1 ) || ( ls $2/*/*a >/dev/null 2>&1 ) || ( ls $2/*/*/*a >/dev/null 2>&1 )
 	then
 		echo "fasta file detected"
-		fasta=$2
-	elif ( ls $2/*/*a >/dev/null 2>&1 ) || ( ls $2/*/*/*a >/dev/null 2>&1 )
-	then
-		echo "fasta file detected in subdirectory"
-		fasta=$2
-	elif ( ls $2/*/*q.gz >/dev/null 2>&1 ) || ( ls $2/*/*/*q.gz >/dev/null 2>&1 )
-	then
-		echo "fastq file detected in subdirectory"
-		fastq=$2
 	else
 		echo ".fasta/.fa/.fna or .fastq not detected in $2"
 		exit 1
@@ -108,9 +99,9 @@ then
 		done
 	#loop trimmomatic through directory
 	conda activate trimmomatic
-	if ( ls $fastq/*1_001.fastq.gz >/dev/null 2>&1 )
+	if ( ls $fasta/*1_001.fastq.gz >/dev/null 2>&1 )
 	then
-		for k in $fastq/*1_001.fastq.gz 
+		for k in $fasta/*1_001.fastq.gz 
 			do 
 				base=$(basename $k _R1_001.fastq.gz)
 				alert="RUNNING TRIMMOMATIC ON $base"	
@@ -125,12 +116,12 @@ then
 					${base}_R2_001_unpaired_trim.fastq.gz \
 					LEADING:3 TRAILING:3 MINLEN:36 SLIDINGWINDOW:4:15
 			done
-		mkdir -p $fastq/trimmed_unpaired
-		mv $fastq/*unpaired_trim.fastq.gz $fastq/trimmed_unpaired
-		mkdir -p $fastq/trimmed_paired
-		mv $fastq/*_trim.fastq.gz $fastq/trimmed_paired
-		mkdir -p $fastq/raw_reads
-		mv $fastq/*.fastq.gz $fastq/raw_reads
+		mkdir -p $fasta/trimmed_unpaired
+		mv $fasta/*unpaired_trim.fastq.gz $fasta/trimmed_unpaired
+		mkdir -p $fasta/trimmed_paired
+		mv $fasta/*_trim.fastq.gz $fasta/trimmed_paired
+		mkdir -p $fasta/raw_reads
+		mv $fasta/*.fastq.gz $fasta/raw_reads
 		conda deactivate
 	elif ( ls $fastq/*1_001.fastq.gz >/dev/null 2>&1 )
 	then
@@ -145,8 +136,8 @@ then
 
 	#run fastqc on trimmed reads
 	conda activate fastqc
-	mkdir -p $fastq/fastqc_reports
-	for k in $fastq/trimmed_paired/*_001_trim.fastq.gz
+	mkdir -p $fasta/fastqc_reports
+	for k in $fasta/trimmed_paired/*_001_trim.fastq.gz
 		do
 			base=$(basename $k _R1_001.fastq.gz) 
 			alert="RUNNING FASTQC ON $base"		
@@ -159,7 +150,7 @@ then
 	conda activate multiqc
 	alert="AGGREGATING FASTQC REPORTS WITH MULTIQC"
 	alert_banner
-	multiqc $fastq/fastqc_reports/ -o $fastq/fastqc_reports/
+	multiqc $fasta/fastqc_reports/ -o $fasta/fastqc_reports/
 	conda deactivate
 fi
 
@@ -172,10 +163,10 @@ then
 		done
 	#assemble genome with shovill
 	conda activate shovill
-	mkdir -p $fastq/assemblies/assembly_files $fastq/assemblies/contigs
-	if [ -d $fastq/trimmed_paired/ ]
+	mkdir -p $fasta/assemblies/assembly_files $fasta/assemblies/contigs
+	if [ -d $fasta/trimmed_paired/ ]
 	then
-		for k in $fastq/trimmed_paired/*1_001_trim.fastq.gz
+		for k in $fasta/trimmed_paired/*1_001_trim.fastq.gz
 			do 
 				base=$(basename $k _R1_001_trim.fastq.gz)
 				alert="ASSEMBLING $base WITH SHOVILL" 
@@ -183,14 +174,14 @@ then
 				mkdir assemblies/assembly_files/$base
 				shovill \
 					--R1 $k \
-					--R2 $fastq/trimmed_paired/${base}_R2_001_trim.fastq.gz \
-					--outdir $fastq/assemblies/assembly_files/$base \
+					--R2 $fasta/trimmed_paired/${base}_R2_001_trim.fastq.gz \
+					--outdir $fasta/assemblies/assembly_files/$base \
 					--force
-				cp $fastq/assemblies/assembly_files/${base}/contigs.fa $fastq/assemblies/contigs/${base}_contigs.fa
+				cp $fasta/assemblies/assembly_files/${base}/contigs.fa $fasta/assemblies/contigs/${base}_contigs.fa
 			done
-	elif ( ls $fastq/*fastq.gz >/dev/null 2>&1 )
+	elif ( ls $fasta/*fastq.gz >/dev/null 2>&1 )
 	then
-		for k in $fastq/*1_001_trim.fastq.gz
+		for k in $fasta/*1_001_trim.fastq.gz
 			do 
 				base=$(basename $k _R1_001_trim.fastq.gz)  
 				alert="ASSEMBLING $base WITH SHOVILL" 
@@ -198,10 +189,10 @@ then
 				mkdir assemblies/assembly_files/$base
 				shovill \
 					--R1 $k \
-					--R2 $fastq/${base}_R2_001_trim.fastq.gz \
-					--outdir $fastq/assemblies/assembly_files/$base \
+					--R2 $fasta/${base}_R2_001_trim.fastq.gz \
+					--outdir $fasta/assemblies/assembly_files/$base \
 					--force
-				cp $fastq/assemblies/assembly_files/${base}/contigs.fa $fastq/assemblies/contigs/${base}_contigs.fa
+				cp $fastq/assemblies/assembly_files/${base}/contigs.fa $fasta/assemblies/contigs/${base}_contigs.fa
 			done
 	else
 		echo  "no .fastq.gz files found in current directory or subdirectory"
@@ -211,8 +202,8 @@ then
 
 	#assess assembly quality with QUAST
 	conda activate quast
-	mkdir $fastq/quast_reports
-	for k in $fastq/assemblies/contigs/*.f*
+	mkdir $fasta/quast_reports
+	for k in $fasta/assemblies/contigs/*.f*
 		do 
 			base=$(basename $k | cut -d. -f1)
 			alert="ASSESSING ASSEMBLY QUALITY OF $base WITH QUAST"		
@@ -220,7 +211,7 @@ then
 			mv "${k}" "${k//\_R/}"
 			quast \
 				$k \
-				-o $fastq/quast_reports/$base;
+				-o $fasta/quast_reports/$base;
 		done
 	conda deactivate
 fi
