@@ -4,8 +4,8 @@
 #version    :1.2.2
 #desc       :Script to perform batch preprocessing of genomes from short-read sequencing, including read
 #			 trimming, QC, assembly, annotation and seeking closest reference genome match
-#usage		:bash preprocessing.sh --input  <directory/with/reads/or/contigs>  --trim --assemble 
-#			 --annotate --refseq --help 
+#usage		:bash preprocessing.sh --input  <directory/with/short/reads/or/contigs>  --trim --assemble
+#			 <short/hybrid> --annotate --refseq --help 
 #===========================================================================================================
 source "$(sudo find ~ -maxdepth 4 -name conda.sh)" #find path to conda base environment
 
@@ -33,7 +33,7 @@ download_reqs() {
 }
 
 #set arguments
-ARGS=$(getopt --options i:tanrh --long "input,trim,assemble,annotate,refseq,help" -- "$@")
+ARGS=$(getopt --options i:ta:nrh --long "input,trim,assemble,annotate,refseq,help" -- "$@")
 
 eval set -- "$ARGS"
 
@@ -69,11 +69,30 @@ while true
 				break;;
 			*)
 				echo "Unknown option specified" 
-				echo "Options: [-i --input <reads or contigs>] [-t --trim] [-a --assemble] \
+				echo "Options: [-i --input <reads or contigs>] [-t --trim] [-a --assemble <short or hybrid] \
 				[-n --annotate] [-r --refseq] [-h --help]"
 				exit 1;;
 		esac
 	done
+
+##create help message
+if [ "$help" == true ]
+then
+	echo "Script to perform standard preprocessing of genomes, including read trimming, QC, assembly"
+	echo "annotation and detect closest reference genome match"
+	echo ""
+	echo "Options: 	[-i --input <reads or contigs>] [-t --trim] [-a --assemble <hybrid or short>]"
+	echo "		[-n --annotate] [-r --refseq] [-h --help]" 
+	echo ""
+	echo "-i --input	: directory containing raw reads or assembled contigs"
+	echo "-t --trim	: filter .fastq files with trimmomatic and assess read quality with fastqc"
+	echo "-a --assemble	: assemble trimmed reads with shovill SPAdes and assess assembly quality with quast"
+	echo "-n --annotate	short: 	annotate assemblies with bakta"
+	echo "				long: 	annotate assemblies with unicyler - requires long reads in long_read/ dir"
+	echo "in specified directory or parent directory"
+	echo "-r --refseq	: run refseq to detect closest reference match"
+	echo "-h --help	: show options"
+fi
 
 if [ "$input" == true ]
 then
@@ -85,7 +104,7 @@ then
 	then
 		echo "fasta file detected"
 	else
-		echo ".fasta/.fa/.fna or .fastq not detected in $2 or subdirectories"
+		echo ".fasta/.fa/.fna or .fastq.gz not detected in $2 or subdirectories"
 		exit 1
 	fi
 fi
@@ -156,50 +175,112 @@ fi
 
 if [ "$assemble" == true ]
 then
-	#create conda env if not already present
-    for env in {shovill,quast}
-		do
-			download_reqs
-		done
-	#assemble genome with shovill
-	conda activate shovill
-	mkdir -p $fasta/assemblies/assembly_files $fasta/assemblies/contigs
-	if [ -d $fasta/trimmed_paired/ ]
+	if [ $3 == "short" ] || [ $3 == "Short"]
 	then
-		for k in $fasta/trimmed_paired/*1_001_trim.fastq.gz
-			do 
-				base=$(basename $k _R1_001_trim.fastq.gz)
-				alert="ASSEMBLING $base WITH SHOVILL" 
-				alert_banner
-				mkdir assemblies/assembly_files/$base
-				shovill \
-					--R1 $k \
-					--R2 $fasta/trimmed_paired/${base}_R2_001_trim.fastq.gz \
-					--outdir $fasta/assemblies/assembly_files/$base \
-					--force
-				cp $fasta/assemblies/assembly_files/${base}/contigs.fa $fasta/assemblies/contigs/${base}_contigs.fa
+		#create conda env if not already present
+		for env in {shovill,quast}
+			do
+				download_reqs
 			done
-	elif ( ls $fasta/*fastq.gz >/dev/null 2>&1 )
+		#assemble genome with shovill
+		conda activate shovill
+		mkdir -p $fasta/assemblies/short_read_assembly_files $fasta/assemblies/contigs
+		if [ -d $fasta/trimmed_paired/ ]
+		then
+			for k in $fasta/trimmed_paired/*1_001_trim.fastq.gz
+				do 
+					base=$(basename $k _R1_001_trim.fastq.gz)
+					alert="ASSEMBLING $base WITH SHOVILL" 
+					alert_banner
+					mkdir assemblies/assembly_files/$base
+					shovill \
+						--R1 $k \
+						--R2 $fasta/trimmed_paired/${base}_R2_001_trim.fastq.gz \
+						--outdir $fasta/assemblies/assembly_files/$base \
+						--force
+					cp $fasta/assemblies/assembly_files/${base}/contigs.fa \
+						$fasta/assemblies/contigs/${base}_contigs.fa
+				done
+		elif ( ls $fasta/*fastq.gz >/dev/null 2>&1 )
+		then
+			for k in $fasta/*1_001_trim.fastq.gz
+				do 
+					base=$(basename $k _R1_001_trim.fastq.gz)  
+					alert="ASSEMBLING $base WITH SHOVILL" 
+					alert_banner
+					mkdir assemblies/assembly_files/$base
+					shovill \
+						--R1 $k \
+						--R2 $fasta/${base}_R2_001_trim.fastq.gz \
+						--outdir $fasta/assemblies/assembly_files/$base \
+						--force
+					cp $fastq/assemblies/assembly_files/${base}/contigs.fa \
+						$fasta/assemblies/contigs/${base}_contigs.fa
+				done
+		else
+			echo  "no .fastq.gz files found in current directory or subdirectory"
+			exit 1
+		fi
+		conda deactivate
+	elif [ $3 == "hybrid" ] || [ $3 == "Hybrid"]
 	then
-		for k in $fasta/*1_001_trim.fastq.gz
-			do 
-				base=$(basename $k _R1_001_trim.fastq.gz)  
-				alert="ASSEMBLING $base WITH SHOVILL" 
-				alert_banner
-				mkdir assemblies/assembly_files/$base
-				shovill \
-					--R1 $k \
-					--R2 $fasta/${base}_R2_001_trim.fastq.gz \
-					--outdir $fasta/assemblies/assembly_files/$base \
-					--force
-				cp $fastq/assemblies/assembly_files/${base}/contigs.fa $fasta/assemblies/contigs/${base}_contigs.fa
+		for env in {unicycler,quast}
+			do
+				download_reqs
 			done
+		#assemble genome with unicycler
+		conda activate unicycler
+		mkdir -p $fasta/assemblies/hybrid_assembly_files $fasta/assemblies/contigs
+		alert="RUNNING HYBRID ASSEMBLY TOOL PLEASE ENSURE:
+				1) LONG READS ARE AVAILABLE IN DIRECTORY /long_reads IN PARENT DIR
+				2) POSSESS THE SAME NAMING STRUCTURE AS SHORT READS WITHOUT _R1_001"
+		alert_banner
+		long_read_dirpath="$(sudo find $fasta/../ -maxdepth 3 -name long_reads)"
+		if [ -d $fasta/trimmed_paired/ ]
+		then
+			for k in $fasta/trimmed_paired/*1_001_trim.fastq.gz
+				do 
+					base=$(basename $k _R1_001_trim.fastq.gz)
+					alert="ASSEMBLING $base WITH UNICYCLER 
+						$k
+						$fasta/${base}_R2_001_trim.fastq.gz
+						$long_read_dirpath/${base}.fastq.gz" 
+					alert_banner
+					unicycler \
+						-1 $k \
+						-2 $fasta/${base}_R2_001_trim.fastq.gz \
+						-l $long_read_dirpath/${base}.fastq.gz \
+						-o $fasta/assemblies/assembly_files/$base \
+						--threads 16
+					cp $fasta/assemblies/assembly_files/${base}/contigs.fa \
+						$fasta/assemblies/contigs/${base}_contigs.fa
+		elif ( ls $fasta/*fastq.gz >/dev/null 2>&1 )
+		then
+			for k in $fasta/*1_001_trim.fastq.gz
+				do 
+					base=$(basename $k _R1_001_trim.fastq.gz)
+					alert="ASSEMBLING $base WITH UNICYCLER 
+						$k
+						$fasta/${base}_R2_001_trim.fastq.gz
+						$long_read_dirpath/${base}.fastq.gz" 
+					alert_banner
+					unicycler \
+						-1 $k \
+						-2 $fasta/${base}_R2_001_trim.fastq.gz \
+						-l $long_read_dirpath/${base}.fastq.gz \
+						-o $fasta/assemblies/assembly_files/$base \
+						--threads 16
+					cp $fasta/assemblies/assembly_files/${base}/contigs.fa \
+						$fasta/assemblies/contigs/${base}_contigs.fa
+				done
+		else
+			echo  "no .fastq.gz files found in current directory or subdirectory"
+			exit 1
+		fi
 	else
-		echo  "no .fastq.gz files found in current directory or subdirectory"
+		echo "--assemble argument requires either hybrid or short as input"
 		exit 1
 	fi
-	conda deactivate
-
 	#assess assembly quality with QUAST
 	conda activate quast
 	mkdir $fasta/quast_reports
@@ -308,22 +389,4 @@ then
 		exit 1
 	fi
 	conda deactivate
-fi
-
-##create help message
-if [ "$help" == true ]
-then
-	echo "Script to perform standard preprocessing of genomes, including read trimming, QC, assembly"
-	echo "annotation and detect closest reference genome match"
-	echo ""
-	echo "Options: 	[-i --input <reads or contigs>] [-t --trim] [-a --assemble] [-n --annotate]"
-	echo "		[-r --refseq] [-h --help]" 
-	echo ""
-	echo "-i --input	: directory containing raw reads or assembled contigs"
-	echo "-t --trim	: filter .fastq files with trimmomatic and assess read quality with fastqc"
-	echo "-a --assemble	: assemble trimmed reads with shovill SPAdes and assess assembly quality with quast"
-	echo "-n --annotate	: annotate assemblies with bakta"
-	echo "-r --refseq	: run refseq to detect closest reference match"
-	echo "-h --help	: show options"
-	exit 1
 fi
