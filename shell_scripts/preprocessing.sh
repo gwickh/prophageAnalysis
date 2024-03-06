@@ -10,11 +10,13 @@
 source "$(sudo find ~ -maxdepth 4 -name conda.sh)" #find path to conda base environment
 
 alert_banner() {
+	echo ""
 	echo "####################################################################################################"
 	echo ""
 	echo "$alert"	
 	echo ""
 	echo "####################################################################################################"
+	echo ""
 }
 
 alert="RUNNING GENOME PREPROCESSING PIPELINE WITH OPTIONS: $@"	
@@ -69,7 +71,7 @@ while true
 				break;;
 			*)
 				echo "Unknown option specified" 
-				echo "Options: [-i --input <reads or contigs>] [-t --trim] [-a --assemble <short or hybrid] \
+				echo "Options: [-i --input <reads or contigs>] [-t --trim] [-a --assemble <short or hybrid>] \
 				[-n --annotate] [-r --refseq] [-h --help]"
 				exit 1;;
 		esac
@@ -232,7 +234,7 @@ then
 		conda activate unicycler
 		mkdir -p $fasta/assemblies/hybrid_assembly_files $fasta/assemblies/contigs
 		alert="RUNNING HYBRID ASSEMBLY TOOL PLEASE ENSURE:
-				1) LONG READS ARE AVAILABLE IN DIRECTORY /long_reads IN PARENT DIR
+				1) LONG READS ARE AVAILABLE IN DIRECTORY long_reads/ IN CURRENT DIR OR PARENT DIR
 				2) POSSESS THE SAME NAMING STRUCTURE AS SHORT READS WITHOUT _R1_001"
 		alert_banner
 		long_read_dirpath="$(sudo find $fasta/../ -maxdepth 3 -name long_reads)"
@@ -250,10 +252,11 @@ then
 						-1 $k \
 						-2 $fasta/${base}_R2_001_trim.fastq.gz \
 						-l $long_read_dirpath/${base}.fastq.gz \
-						-o $fasta/assemblies/assembly_files/$base \
+						-o $fasta/assemblies/hybrid_assembly_files/$base \
 						--threads 16
-					cp $fasta/assemblies/assembly_files/${base}/contigs.fa \
+					cp $fasta/assemblies/hybrid_assembly_files/${base}/contigs.fa \
 						$fasta/assemblies/contigs/${base}_contigs.fa
+				done
 		elif ( ls $fasta/*fastq.gz >/dev/null 2>&1 )
 		then
 			for k in $fasta/*1_001_trim.fastq.gz
@@ -268,9 +271,9 @@ then
 						-1 $k \
 						-2 $fasta/${base}_R2_001_trim.fastq.gz \
 						-l $long_read_dirpath/${base}.fastq.gz \
-						-o $fasta/assemblies/assembly_files/$base \
+						-o $fasta/assemblies/hybrid_assembly_files/$base \
 						--threads 16
-					cp $fasta/assemblies/assembly_files/${base}/contigs.fa \
+					cp $fasta/assemblies/hybrid_assembly_files/${base}/assembly.fasta \
 						$fasta/assemblies/contigs/${base}_contigs.fa
 				done
 		else
@@ -325,7 +328,7 @@ then
 				base=$(basename $k | cut -d. -f1)
 				alert="ANNOTATING $k WITH BAKTA"	
 				alert_banner
-				mkdir -p $fasta/annotated/$base/
+				mkdir -p $fasta/annotated_genomes/$base/
 				bakta \
 					--db $dbpath/.. \
 					--verbose \
@@ -340,7 +343,7 @@ then
 				base=$(basename $k | cut -d. -f1)
 				alert="ANNOTATING $k WITH BAKTA"	
 				alert_banner
-				mkdir -p $fasta/annotated/base/
+				mkdir -p $fasta/annotated_genomes/$base/
 				bakta \
 					--db $dbpath/.. \
 					--verbose \
