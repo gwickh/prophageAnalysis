@@ -114,61 +114,61 @@ source $basepath
 # fi
 # conda deactivate
 
-##run VIBRANT
-#create conda environments if not already present
-envpath="$(sudo find ~ -maxdepth 3 -name envs)"
-for env in VIBRANT
-	do
-        if 
-            [ -f $envpath/$env/./bin/VIBRANT_run.py ] 
-        then
-            echo "$env conda env present" 
-        else
-            echo "$env conda env not present, installing" 
-            mamba create $env -n $env -c bioconda -c conda-forge -y
-        fi
-    done
+# ##run VIBRANT
+# #create conda environments if not already present
+# envpath="$(sudo find ~ -maxdepth 3 -name envs)"
+# for env in VIBRANT
+# 	do
+#         if 
+#             [ -f $envpath/$env/./bin/VIBRANT_run.py ] 
+#         then
+#             echo "$env conda env present" 
+#         else
+#             echo "$env conda env not present, installing" 
+#             mamba create $env -n $env -c bioconda -c conda-forge -y
+#         fi
+#     done
 
-#set up VIBRANT database
-echo "checking for VIBRANT database up to 6 subdirectories deep from home"
-dbpath="$(sudo find ~ -maxdepth 4 -type d -name ${env}_db)"
-master_db_dir_path="$(sudo find ~ -maxdepth 5 -name prophage_databases)"
+# #set up VIBRANT database
+# echo "checking for VIBRANT database up to 6 subdirectories deep from home"
+# dbpath="$(sudo find ~ -maxdepth 4 -type d -name ${env}_db)"
+# master_db_dir_path="$(sudo find ~ -maxdepth 5 -name prophage_databases)"
 
-conda activate $env
-if [ -e "$dbpath" ]
-then
-	echo "VIBRANT database detected at $dbpath" 
-else
-    if [ -d "$master_db_dir_path" ]
-    then   
-        echo "VIBRANT database not detected, downloading to $master_db_dir_path directory"
-        mkdir -p $master_db_dir_path/VIBRANT_db
-        download-db.sh $master_db_dir_path/VIBRANT_db/
-    else
-        echo "VIBRANT database not detected, downloading to prophage_databases/ in current directory"
-        mkdir -p prophage_databases/VIBRANT_db
-        download-db.sh prophage_databases/VIBRANT_db/
-    fi
-fi
+# conda activate $env
+# if [ -e "$dbpath" ]
+# then
+# 	echo "VIBRANT database detected at $dbpath" 
+# else
+#     if [ -d "$master_db_dir_path" ]
+#     then   
+#         echo "VIBRANT database not detected, downloading to $master_db_dir_path directory"
+#         mkdir -p $master_db_dir_path/VIBRANT_db
+#         download-db.sh $master_db_dir_path/VIBRANT_db/
+#     else
+#         echo "VIBRANT database not detected, downloading to prophage_databases/ in current directory"
+#         mkdir -p prophage_databases/VIBRANT_db
+#         download-db.sh prophage_databases/VIBRANT_db/
+#     fi
+# fi
 
-#run VIBRANT
-if ( ls *.f* >/dev/null 2>&1 )
-then
-    for k in $1/*.f*
-        do
-            base=$(basename $k | cut -d. -f1)
-            echo "running VIBRANT on genome $base"
-            mkdir -p $1/output_VIBRANT/$base/;
-            VIBRANT_run.py \
-                -i $k \
-                -folder output_VIBRANT/$base \
-                -d $dbpath/databases/ \
-                -m $dbpath/files/
-        done
-else
-    echo "no fasta files detected in $1"
-fi
-conda deactivate
+# #run VIBRANT
+# if ( ls *.f* >/dev/null 2>&1 )
+# then
+#     for k in $1/*.f*
+#         do
+#             base=$(basename $k | cut -d. -f1)
+#             echo "running VIBRANT on genome $base"
+#             mkdir -p $1/output_VIBRANT/$base/;
+#             VIBRANT_run.py \
+#                 -i $k \
+#                 -folder output_VIBRANT/$base \
+#                 -d $dbpath/databases/ \
+#                 -m $dbpath/files/
+#         done
+# else
+#     echo "no fasta files detected in $1"
+# fi
+# conda deactivate
 
 # ##run genomad
 # #create conda environments if not already present
@@ -227,92 +227,105 @@ conda deactivate
 # fi
 # conda deactivate
 
-# #move prediction outputs to directory prophage_predictions/
-# if [ ! -d $1/prophage_predictions/output_PHASTER  ]
-# then
-#     mkdir -p $1/prophage_predictions/
-#     envpath="$(sudo find $1 -maxdepth 3 -name output_PHASTER)"
-#     mv $(dirname $envpath)/output_* $1/prophage_predictions/
-#     echo "creating $1/prophage_predictions/ directory"
-# else
-#     echo "predictions in $1/prophage_predictions/ directory"
-# fi
+#move prediction outputs to directory prophage_predictions/
+if [ ! -d $1/prophage_predictions/output_PHASTER  ]
+then
+    mkdir -p $1/prophage_predictions/
+    envpath="$(sudo find $1 -maxdepth 3 -name output_PHASTER)"
+    mv $(dirname $envpath)/output_* $1/prophage_predictions/
+    echo "creating $1/prophage_predictions/ directory"
+else
+    echo "predictions in $1/prophage_predictions/ directory"
+fi
 
-# ###get predicted prophage regions
-# for k in $1/prophage_predictions/output_PHASTER/*
-#     do
-#         base=$(basename $k)
-#         outpath="$1/prophage_regions/$base/${base}"
-#         inpath="$1/prophage_predictions/output"
-#         mkdir -p $1/prophage_regions/$base
-#         echo "creating $k directory"
-#         #copy prophage stats
-#         echo "aggregating $base prediction statistics"
-#         cp ${inpath}_genomad/$base/${base}_summary/${base}_virus_summary.tsv \
-#             ${outpath}_genomad_summary.tsv
-#         cp ${inpath}_PHASTER/$base/summary.txt \
-#             ${outpath}_phaster_summary.tsv
-#         cp ${inpath}_VIBRANT/$base/VIBRANT_$base/VIBRANT_results_${base}/VIBRANT_integrated_prophage_coordinates_${base}.tsv \
-#             ${outpath}_VIBRANT_summary.tsv
-#         cp ${inpath}_virsorter/$base/final-viral-boundary.tsv \
-#             ${outpath}_virsorter_summary.tsv
-#         #copy prophage fasta
-#         echo "aggregating $base predictions"
-#         cp ${inpath}_genomad/$base/${base}_summary/${base}_virus.fna \
-#             ${outpath}_genomad_prophage_regions.fna
-#         cp ${inpath}_PHASTER/$base/phage_regions.fna \
-#             ${outpath}_phaster_prophage_regions.fna
-#         cp ${inpath}_VIBRANT/$base/VIBRANT_$base/VIBRANT_phages_${base}/${base}.phages_combined.fna \
-#             ${outpath}_VIBRANT_prophage_regions.fna
-#         cp ${inpath}_virsorter/$base/final-viral-combined.fa \
-#             ${outpath}_virsorter_prophage_regions.fna
-#         echo "prophage_start,prophage_end,genome,prediction_tool" > $k/${base}_predictions_summary.csv
-#         ##parse output files into csv format
-#         #parse genomad
-#         cut -f4 ${outpath}_genomad_summary.tsv > ${outpath}_genomad_summary.temp4
-#         #parse phaster
-#         sed -e '1,32d' ${outpath}_PHASTER_summary.tsv > ${outpath}_PHASTER_summary.temp2
-#         sed 's/ \+ /\t/g' ${outpath}_PHASTER_summary.temp2 > ${outpath}_PHASTER_summary.temp3
-#         cut -f6 ${outpath}_PHASTER_summary.temp3 > ${outpath}_PHASTER_summary.temp4
-#         #parse VIBRANT
-#         cut -f7,8 ${outpath}_VIBRANT_summary.tsv > ${outpath}_VIBRANT_summary.temp4 
-#         #parse virsorter
-#         cut -f4,5 ${outpath}_virsorter_summary.tsv > ${outpath}_virsorter_summary.temp4
-#         #create master 
-#         echo "prophage_start,prophage_end,genome,prediction_tool" > ${outpath}_predictions_summary.csv
-#         ##perform tool specific actions
-#         for tool in {genomad,PHASTER,VIBRANT,virsorter}
-#             do
-#                 #replace fasta header with seq number
-#                 awk '/^>/{print ">" ++i; next}{print}' \
-#                     ${outpath}_${tool}_prophage_regions.fna \
-#                     > ${outpath}_${tool}_prophage_regions_temp.fna
-#                 mv ${outpath}_${tool}_prophage_regions_temp.fna \
-#                     ${outpath}_${tool}_prophage_regions.fna
-#                 sed -i "s/^>/>${base}_${tool}_prediction_/" \
-#                     ${outpath}_${tool}_prophage_regions.fna
-#                 cat ${outpath}_${tool}_prophage_regions.fna \
-#                     >> $1/prophage_regions/$base/merged_${base}_prophage_regions.fna
-#                 #combine predictions into single file
-#                 sed -i '1d' ${outpath}_${tool}_summary.temp4 
-#                 tr -s '-' ',' <${outpath}_${tool}_summary.temp4 > ${outpath}_${tool}_summary.temp5
-#                 tr -s '[:blank:]' ',' <${outpath}_${tool}_summary.temp5 > ${outpath}_${tool}_summary.temp6
-#                 awk -v base="$base" -F"," 'BEGIN { OFS = "," } {$3=base; print}' \
-#                     ${outpath}_${tool}_summary.temp6 \
-#                     > ${outpath}_${tool}_summary.temp7
-#                 awk -v tool="$tool" -F"," 'BEGIN { OFS = "," } {$4=tool; print}' \
-#                     ${outpath}_${tool}_summary.temp7 \
-#                     > ${outpath}_${tool}_summary.temp8
-#                 cat ${outpath}_${tool}_summary.temp8 >> ${outpath}_predictions_summary.csv
-#             done
-#         rm $1/prophage_regions/$base/*temp* $1/prophage_regions/$base/*.tsv
-#         ##split seqs into single fastas
-#         mkdir -p $1/prophage_regions/${base}/split_fasta
-#         awk 'BEGIN{RS=">";FS="\n"} NR>1{fnme=$1".fna"; print ">" $0 > fnme; close(fnme);}' \
-#             $1/prophage_regions/$base/merged_${base}_prophage_regions.fna
-#         mv ./*.fna $1/prophage_regions/${base}/split_fasta
-#     done
-
+###get predicted prophage regions
+for k in $1/prophage_predictions/output_PHASTER/*
+    do
+        base=$(basename $k)
+        outpath="$1/prophage_regions/$base/${base}"
+        inpath="$1/prophage_predictions/output"
+        mkdir -p $1/prophage_regions/$base
+        echo "creating $k directory"
+        #copy prophage stats
+        echo "aggregating $base prediction statistics"
+        cp ${inpath}_genomad/$base/${base}_summary/${base}_virus_genes.tsv \
+            ${outpath}_genomad_summary.tsv
+        cp ${inpath}_PHASTER/$base/summary.txt \
+            ${outpath}_phaster_summary.tsv
+        cp ${inpath}_VIBRANT/$base/VIBRANT_$base/VIBRANT_results_${base}/VIBRANT_integrated_prophage_coordinates_${base}.tsv \
+            ${outpath}_VIBRANT_summary.tsv
+        cp ${inpath}_virsorter/$base/final-viral-boundary.tsv \
+            ${outpath}_virsorter_summary.tsv
+        #copy prophage fasta
+        echo "aggregating $base predictions"
+        cp ${inpath}_genomad/$base/${base}_summary/${base}_virus.fna \
+            ${outpath}_genomad_prophage_regions.fna
+        cp ${inpath}_PHASTER/$base/phage_regions.fna \
+            ${outpath}_phaster_prophage_regions.fna
+        cp ${inpath}_VIBRANT/$base/VIBRANT_$base/VIBRANT_phages_${base}/${base}.phages_combined.fna \
+            ${outpath}_VIBRANT_prophage_regions.fna
+        cp ${inpath}_virsorter/$base/final-viral-combined.fa \
+            ${outpath}_virsorter_prophage_regions.fna
+        ###parse output files into csv format
+        ##parse genomad
+        #remove locus tag suffixes
+        cut -f1,2,3 ${outpath}_genomad_summary.tsv |
+            awk '{{sub("_.*","",$1)}} 1' |
+                awk '{{sub("provirus","",$1)}} 1' |
+                    tr -d '|' |
+                        tr -s '[:blank:]' ','|
+                            sed '1d' > ${outpath}_genomad_summary.temp_sorted
+        #determine prophage start position
+        sort -n -t',' -k3,3 ${outpath}_genomad_summary.temp_sorted |
+            cut -d "," -f1,2 |
+                awk 'BEGIN { FS = "," } ; !seen[$1]++' |
+                    sort -t',' -k1,1 > ${outpath}_genomad_summary.temp_min
+        #determine prophage stop position
+        sort -t ',' -k1,1 -k3,3nr ${outpath}_genomad_summary.temp_sorted |
+            cut -d "," -f1,3 |
+                awk 'BEGIN { FS = "," } ; !seen[$1]++' |
+                    sort -t',' -k1,1 |
+                        cut -d "," -f2 > ${outpath}_genomad_summary.temp_max
+        #combine
+        echo "contig,prophage_start,prophage_end" > ${outpath}_genomad_summary.temp
+        paste -d ',' ${outpath}_genomad_summary.temp_min ${outpath}_genomad_summary.temp_max >> ${outpath}_genomad_summary.temp
+        ##parse phaster
+        sed -e '1,32d' ${outpath}_PHASTER_summary.tsv |
+            sed 's/ \+ /\t/g' |
+                cut -f6 |
+                    cut -d "," -f1,7 |
+                        sed '1d' |
+                            awk 'BEGIN { FS="," } {{sub(".*:","",$2)}} 1' > ${outpath}_PHASTER_summary.temp
+        ##parse VIBRANT
+        tr -s '[:blank:]' '\t' <${outpath}_VIBRANT_summary.tsv |
+            cut -f1,15,16 > ${outpath}_VIBRANT_summary.temp
+        ##parse virsorter
+        cut -f1,4,5 ${outpath}_virsorter_summary.tsv > ${outpath}_virsorter_summary.temp
+        ##create master 
+        echo "contig,prophage_start,prophage_end,genome,prediction_tool" > ${outpath}_predictions_summary.csv
+        ##perform tool specific actions
+        for tool in {genomad,PHASTER,VIBRANT,virsorter}
+            do
+                #replace fasta header with seq number
+                awk '/^>/{print ">" ++i; next}{print}' \
+                    ${outpath}_${tool}_prophage_regions.fna \
+                    > ${outpath}_${tool}_prophage_regions_temp.fna
+                mv ${outpath}_${tool}_prophage_regions_temp.fna \
+                    ${outpath}_${tool}_prophage_regions.fna
+                sed -i "s/^>/>${base}_${tool}_prediction_/" \
+                    ${outpath}_${tool}_prophage_regions.fna
+                cat ${outpath}_${tool}_prophage_regions.fna \
+                    >> $1/prophage_regions/$base/merged_${base}_prophage_regions.fna
+                #combine predictions into single file
+                sed -i '1d' ${outpath}_${tool}_summary.temp 
+                tr -s '-' ',' <${outpath}_${tool}_summary.temp |
+                    tr -s '[:blank:]' ',' |
+                        awk -v base="$base" -F"," 'BEGIN { OFS = "," } {$4=base; print}' |
+                            awk -v tool="$tool" -F"," 'BEGIN { OFS = "," } {$5=tool; print}' |
+                                cat >> ${outpath}_predictions_summary.csv
+            done
+        rm $1/prophage_regions/$base/*temp* $1/prophage_regions/$base/*.tsv
+    done
 
 # # #run checkv on prophage regions
 # source "$(sudo find ~ -maxdepth 4 -name conda.sh)" #find path to conda base environment
