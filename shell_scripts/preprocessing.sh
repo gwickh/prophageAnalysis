@@ -23,8 +23,8 @@ alert="RUNNING GENOME PREPROCESSING PIPELINE WITH OPTIONS: $@"
 alert_banner
 
 #create function to obtain requirements from conda
+envpath="$(sudo find ~ -maxdepth 3 -name envs)"
 download_reqs() {
-	envpath="$(sudo find ~ -maxdepth 3 -name envs)"
 	if [ -f $envpath/$env/./bin/$env ] 
 	then
 		echo "$env conda env present" 
