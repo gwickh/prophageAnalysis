@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #author:    :Gregory Wickham
-#date:      :20240312
-#version    :1.4.1
+#date:      :20240313
+#version    :1.5.0
 #desc       :Script for running prophage prediction tools
 #usage		:bash prophage_prediction.sh <directory/with/contigs>
 #===========================================================================================================
@@ -35,7 +35,7 @@ download_reqs() {
 }
 
 #set arguments
-ARGS=$(getopt --options i:p:vgsh --long "input,phaster,vibrant,genomad,virsorter,help" -- "$@")
+ARGS=$(getopt --options i:p:vgsbh --long "input,phaster,vibrant,genomad,virsorter,phageboost,help" -- "$@")
 
 eval set -- "$ARGS"
 
@@ -44,6 +44,7 @@ phaster="false"
 vibrant="false"
 genomad="false"
 virsorter="false"
+phageboost="false"
 help="false"
 
 while true
@@ -64,6 +65,9 @@ while true
             -s|--virsorter)
 				virsorter="true"
 				shift;;
+            -b|--phageboost)
+                phageboost="true"
+                shift;;
 			-h|--help)
 				help="true"
 				shift;;
@@ -92,6 +96,7 @@ then
 	echo "-v --vibrant      : run VIBRANT for prophage prediction"
 	echo "-g --genomad      : run GeNomad for prophage prediction"
 	echo "-s  --virsorter   : run VirSorter for prophage prediction"
+    echo "-b  --phageboost  : run PhageBoost for prophage prediction"
 	echo "-h --help         : show options"
 fi
 
@@ -368,6 +373,39 @@ then
     conda deactivate
 fi
 
+if [ "$xgboost" == true ]
+then
+    if [ -e $envpath/PhageBoost-env/ ] 
+    then
+        echo "PhageBoost-env conda env present" 
+    else
+        echo "creating conda env: PhageBoost-env" 
+        conda create -y -n PhageBoost-env python=3.7
+        conda activate PhageBoost-env
+        pip install typing_extensions pyrodigal==0.7.2 xgboost==1.0.2 git+https://github.com/ku-cbd/PhageBoost
+    fi
+    # run phageboost
+    if ( ls *.f* >/dev/null 2>&1 )
+    then
+        for k in $assembly/*.f*
+            do
+                base=$(basename $k | cut -d. -f1)
+                alert="RUNNING PHAGEBOOST ON GENOME $base"
+                alert_banner
+                mkdir -p $assembly/output_phageboost/$base/;
+                PhageBoost \
+                    -f $k \
+                    -o $assembly/output_phageboost/$base \
+                    -c 1000 \
+                    --threads 15
+
+            done
+    else
+        echo "no fasta files detected in $assembly"
+    fi 
+    conda deactivate
+fi
+
 #move prediction outputs to directory prophage_predictions/
 if [ ! -d $assembly/prophage_predictions ]
 then
@@ -465,6 +503,17 @@ for k in $assembly/prophage_predictions/${output_list[0]}/*
             cp ${inpath}_virsorter/$base/final-viral-combined.fa \
                 ${outpath}_virsorter_prophage_regions.fna
             cut -f1,4,5 ${outpath}_virsorter_summary.tsv > ${outpath}_virsorter_summary.temp
+        fi
+        ##phageboost
+        if [[ ${output_list[@]} == *"output_phageboost"* ]]
+        then
+            cp ${inpath}_phageboost/$base/phages_$base.gff \
+                ${outpath}_phageboost_summary.tsv
+            cat ${inpath}_phageboost/$base/*.fasta \
+                >> ${outpath}_phageboost_prophage_regions.fna
+            tr -s '[:blank:]' ',' <${outpath}_phageboost_summary.tsv |
+                sed '1d' |
+                    cut -f1,4,5 -d',' >> ${outpath}_phageboost_summary.temp
         fi
         ##create master 
         echo "contig,prophage_start,prophage_end,genome,prediction_tool" > ${outpath}_predictions_summary.csv
