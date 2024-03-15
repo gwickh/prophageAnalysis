@@ -109,20 +109,20 @@ then
 	echo "-h --help         : show options"
 fi
 
+#define input location as $assembly variable
 if [ "$input" == true ]
 then
 	assembly=$2
 	if ( ls $2/*a >/dev/null 2>&1 )
 	then
 		echo "assemblies detected"
-	else
-		echo "ERROR: assemblies not detected in $2"
-		exit 1
 	fi
 fi
 
-if [ "$outdir" == true ]
-then
+##define outdir location as $output_dir variable
+#if outdir and input options are invoked use $3 as $output_dir variable
+if [ "$outdir" == true ] && [ "$input" == true ] 
+then 
     echo "using $3 as output directory"
     output_dir=$3
     if [ ! -d $output_dir ]
@@ -130,10 +130,26 @@ then
         echo "creating $output_dir"
         mkdir -p $output_dir
     fi
-else
+fi 
+
+#if only outdir is invoked invoked use $2 as $output_dir variable
+if [ "$outdir" == true ] && [ "$input" == false ] 
+then 
+    echo "using $2 as output directory"
+    output_dir=$2
+    if [ ! -d $output_dir ]
+    then
+        echo "creating $output_dir"
+        mkdir -p $output_dir
+    fi
+fi 
+
+#if outdir is not invoked use PWD as $output_dir variable
+if [ "$outdir" == false ]
+then 
     echo "using present working dir as output directory"
     output_dir="."
-fi 
+fi
 
 if [ "$phaster" == true ]
 then
@@ -444,7 +460,7 @@ then
     fi
 
     ###get predicted prophage regions
-    output_list=($(ls $output_dir/prophage_predictions/))
+    output_list=($(ls $output_dir/prophage_predictions))
     if [ -z $output_list ]
     then 
         echo "ERROR: No output dir found in $output_dir/prophage_predictions/"
@@ -541,7 +557,7 @@ then
                 cp ${inpath}_phageboost/$base/phages_$base.gff \
                     ${outpath}_phageboost_summary.tsv
                 cat ${inpath}_phageboost/$base/*.fasta \
-                    >> ${outpath}_phageboost_prophage_regions.fna
+                    > ${outpath}_phageboost_prophage_regions.fna
                 tr -s '[:blank:]' ',' <${outpath}_phageboost_summary.tsv |
                     sed '1d' |
                         cut -f1,4,5 -d',' >> ${outpath}_phageboost_summary.temp
@@ -551,56 +567,66 @@ then
             ##perform tool specific actions
             >$output_dir/prophage_regions/$base/merged_${base}_prophage_regions.fna
             for tool in $tool_list
-                do
-                    #replace fasta header with seq number
-                    awk '/^>/{print ">" ++i; next}{print}' \
-                        ${outpath}_${tool}_prophage_regions.fna \
-                        > ${outpath}_${tool}_prophage_regions_temp.fna
-                    mv ${outpath}_${tool}_prophage_regions_temp.fna \
-                        ${outpath}_${tool}_prophage_regions.fna
-                    sed -i "s/^>/>${base}_${tool}_prediction_/" \
-                        ${outpath}_${tool}_prophage_regions.fna
-                    cat ${outpath}_${tool}_prophage_regions.fna \
-                        >> $assembly/prophage_regions/$base/merged_${base}_prophage_regions.fna
-                    #combine predictions into single file
-                    sed -i '1d' ${outpath}_${tool}_summary.temp 
-                    tr -s '-' ',' <${outpath}_${tool}_summary.temp |
-                        tr -s '[:blank:]' ',' |
-                            awk -v base="$base" -F"," 'BEGIN { OFS = "," } {$4=base; print}' |
-                                awk -v tool="$tool" -F"," 'BEGIN { OFS = "," } {$5=tool; print}' |
-                                    cat >> ${outpath}_predictions_summary.csv
+            do
+                #replace fasta header with seq number
+                awk '/^>/{print ">" ++i; next}{print}' \
+                    ${outpath}_${tool}_prophage_regions.fna \
+                    > ${outpath}_${tool}_prophage_regions_temp.fna
+                mv ${outpath}_${tool}_prophage_regions_temp.fna \
+                    ${outpath}_${tool}_prophage_regions.fna
+                sed -i "s/^>/>${base}_${tool}_prediction_/" \
+                    ${outpath}_${tool}_prophage_regions.fna
+                cat ${outpath}_${tool}_prophage_regions.fna \
+                    >> $output_dir/prophage_regions/$base/merged_${base}_prophage_regions.fna
+                #combine predictions into single file
+                sed -i '1d' ${outpath}_${tool}_summary.temp 
+                tr -s '-' ',' <${outpath}_${tool}_summary.temp |
+                    tr -s '[:blank:]' ',' |
+                        awk -v base="$base" -F"," 'BEGIN { OFS = "," } {$4=base; print}' |
+                            awk -v tool="$tool" -F"," 'BEGIN { OFS = "," } {$5=tool; print}' |
+                                cat >> ${outpath}_predictions_summary.csv
                 done
-            rm $outpath/prophage_regions/$base/*temp* $outpath/prophage_regions/$base/*.tsv
+            rm $outpath*temp* $outpath*.tsv
         done
+    #concatenate summary files together
+    echo "contig,prophage_start,prophage_end,genome,prediction_tool" \
+        > $output_dir/prophage_regions/concatenated_predictions_summary.csv
+    for k in $output_dir/prophage_regions/*/
+    do
+        base=$(basename $k)
+        echo "concatenating $k"
+        cat $k/${base}_predictions_summary.csv |
+            sed '1d' >> $output_dir/prophage_regions/concatenated_predictions_summary.csv
+    done
 
-    #run checkv on prophage regions
-    env=checkv
-    download_reqs
-    conda activate checkv
-    #set up genomad database
-    echo "checking for CheckV database up to 6 subdirectories deep from home"
-    dbpath="$(sudo find ~ -maxdepth 6 -type d -iname "checkv-db*")"
-    if [ -e "$dbpath" ]
-    then
-        echo "CheckV database detected at $dbpath" 
-    else
-        if [ -d "$master_db_dir_path" ]
-        then   
-            echo "CheckV database not detected, downloading to $master_db_dir_path directory"
-            checkv download_database $master_db_dir_path
-        else
-            echo "CheckV database not detected, downloading to prophage_databases/ in $output_dir directory"
-            mkdir -p $output_dir/prophage_databases
-            checkv download_database $output_dir/prophage_databases
-        fi
-    fi
+#     #run checkv on prophage regions
+#     env=checkv
+#     download_reqs
+#     conda activate checkv
+#     #set up checkV database
+#     echo "checking for CheckV database up to 6 subdirectories deep from home"
+#     dbpath="$(sudo find ~ -maxdepth 6 -type d -iname "checkv-db*")"
+#     if [ -e "$dbpath" ]
+#     then
+#         echo "CheckV database detected at $dbpath" 
+#     else
+#         if [ -d "$master_db_dir_path" ]
+#         then   
+#             echo "CheckV database not detected, downloading to $master_db_dir_path directory"
+#             checkv download_database $master_db_dir_path
+#         else
+#             echo "CheckV database not detected, downloading to prophage_databases/ in $output_dir directory"
+#             mkdir -p $output_dir/prophage_databases
+#             checkv download_database $output_dir/prophage_databases
+#         fi
+#     fi
 
-    for k in $output_dir/prophage_regions/*/merged*.fna
-        do
-            base=$(basename $k _prophage_regions.fna)
-            alert="running checkv on $base"
-            alert_banner
-            mkdir -p $(dirname $k)/${base}_checkv
-            checkv end_to_end $k $(dirname $k)/${base}_checkv -t 8 -d $dbpath
-        done
+#     for k in $output_dir/prophage_regions/*/merged*.fna
+#     do
+#         base=$(basename $k _prophage_regions.fna)
+#         alert="running checkv on $base"
+#         alert_banner
+#         mkdir -p $(dirname $k)/${base}_checkv
+#         checkv end_to_end $k $(dirname $k)/${base}_checkv -t 8 -d $dbpath
+#     done
 fi
