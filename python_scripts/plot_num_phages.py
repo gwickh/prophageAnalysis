@@ -15,11 +15,12 @@ mean_phage_predictions = phage_predictions\
     .mean()\
     .sort_values(by = "contig", ascending = False)\
     .rename(columns = {"contig": "mean_phage_predictions"})\
-    .drop(columns = ["prophage_start", "prophage_end"])\
+    .drop(columns = ["prophage_start", "prophage_end", "length"])\
     .reset_index()
 
 phage_predictions = phage_predictions.merge(mean_phage_predictions, on="genome")
 
+#plot counts of predictions as bars
 plt.figure(figsize=(14,6))
 g = sns.countplot(
     data = phage_predictions,
@@ -38,3 +39,14 @@ g.set_xlabel('Genome', fontsize = 10)
 g.legend(fontsize='10', title_fontsize='10')
 plt.rcParams['figure.dpi'] = 600
 plt.rcParams['savefig.dpi'] = 600
+
+#plot counts of predictions as points
+g = sns.countplot(
+    data = phage_predictions,
+    x = "genome",
+    hue = "prediction_tool",
+    order=phage_predictions.sort_values(
+        'mean_phage_predictions', 
+        ascending = False
+    ).genome
+)

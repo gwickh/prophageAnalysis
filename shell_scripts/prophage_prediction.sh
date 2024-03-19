@@ -584,7 +584,7 @@ then
         rm $outpath*temp* $outpath*.tsv
     done
     #concatenate summary files together
-    echo "contig,prophage_start,prophage_end,genome,prediction_tool" \
+    echo "contig,prophage_start,prophage_end,genome,prediction_tool,length" \
         > $output_dir/prophage_regions/concatenated_predictions_summary.csv
     for k in $output_dir/prophage_regions/*/
     do
