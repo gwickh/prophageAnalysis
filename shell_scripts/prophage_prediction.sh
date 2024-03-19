@@ -83,8 +83,8 @@ while true
 				break;;
 			*)
 				echo "Unknown option specified" 
-				echo "Options:  [-i --input <contigs>] [-p --phaster] [-v --vibrant ] [-g --genomad]"
-                echo "        [-s --virsorter] [-h --help]"
+				echo "Options:  [-i --input <contigs>] [-o --outdir </output/directory/>] [-p --phaster] [-v --vibrant ]"
+                echo "        [-g --genomad] [-s --virsorter] [-h --help]"
 				exit 1;;
 		esac
 	done
@@ -470,124 +470,119 @@ then
     fi
 
     for k in $output_dir/prophage_predictions/${output_list[0]}/*
+    do
+        base=$(basename $k)
+        outpath="$output_dir/prophage_regions/$base/${base}"
+        inpath="$output_dir/prophage_predictions/output"
+        mkdir -p $output_dir/prophage_regions/$base
+        echo "creating $outpath directory"
+        ###copy prophage stats
+        echo "aggregating $base predictions"
+        ##genomad
+        if [[ ${output_list[@]} == *"output_genomad"* ]]
+        then
+            cp ${inpath}_genomad/$base/${base}_summary/${base}_virus_genes.tsv \
+                ${outpath}_genomad_summary.tsv
+            cp ${inpath}_genomad/$base/${base}_summary/${base}_virus.fna \
+                ${outpath}_genomad_prophage_regions.fna
+            #remove locus tag suffixes
+            cut -f1,2,3 ${outpath}_genomad_summary.tsv |
+                awk '{{sub("_.*","",$1)}} 1' |
+                    awk '{{sub("provirus","",$1)}} 1' |
+                        tr -d '|' |
+                            tr -s '[:blank:]' ','|
+                                sed '1d' > ${outpath}_genomad_summary.temp_sorted
+            #determine prophage start position
+            sort -n -t',' -k3,3 ${outpath}_genomad_summary.temp_sorted |
+                cut -d "," -f1,2 |
+                    awk 'BEGIN { FS = "," } ; !seen[$1]++' |
+                        sort -t',' -k1,1 > ${outpath}_genomad_summary.temp_min
+            #determine prophage stop position
+            sort -t ',' -k1,1 -k3,3nr ${outpath}_genomad_summary.temp_sorted |
+                cut -d "," -f1,3 |
+                    awk 'BEGIN { FS = "," } ; !seen[$1]++' |
+                        sort -t',' -k1,1 |
+                            cut -d "," -f2 > ${outpath}_genomad_summary.temp_max
+            #combine
+            echo "contig,prophage_start,prophage_end" > ${outpath}_genomad_summary.temp
+            paste -d ',' ${outpath}_genomad_summary.temp_min \
+                ${outpath}_genomad_summary.temp_max \
+                >> ${outpath}_genomad_summary.temp
+            fi
+        ##phaster
+        if [[ ${output_list[@]} == *"output_PHASTER"* ]]
+        then
+            cp ${inpath}_PHASTER/$base/summary.txt ${outpath}_phaster_summary.tsv
+            cp ${inpath}_PHASTER/$base/phage_regions.fna ${outpath}_phaster_prophage_regions.fna
+            sed -e '1,32d' ${outpath}_PHASTER_summary.tsv |
+                sed 's/ \+ /\t/g' |
+                    cut -f6 |
+                        cut -d "," -f1,7 |
+                            sed '1d' |
+                                awk 'BEGIN { FS="," } {{sub(".*:","",$2)}} 1' > ${outpath}_PHASTER_summary.temp
+        fi
+        ##vibrant
+        if [[ ${output_list[@]} == *"output_VIBRANT"* ]]
+        then
+            cp ${inpath}_VIBRANT/$base/VIBRANT_$base/VIBRANT_results_${base}/VIBRANT_integrated_prophage_coordinates_${base}.tsv \
+                ${outpath}_VIBRANT_summary_lysogenic.tsv
+            cp ${inpath}_VIBRANT/$base/VIBRANT_$base/VIBRANT_results_${base}/VIBRANT_summary_results_${base}.tsv \
+                ${outpath}_VIBRANT_summary_lytic.tsv
+            cp ${inpath}_VIBRANT/$base/VIBRANT_$base/VIBRANT_phages_${base}/${base}.phages_combined.fna \
+                ${outpath}_VIBRANT_prophage_regions.fna
+            tr -s '\t' ',' <${outpath}_VIBRANT_summary_lysogenic.tsv |
+                cut -f1,6,7 -d',' |
+                    awk 'BEGIN{FS=OFS=","} {sub(/ .*/,"",$1)} 1' > ${outpath}_VIBRANT_summary.temp
+            tr -s ' ' ',' <${outpath}_VIBRANT_summary_lytic.tsv |
+                sed '/fragment/d' |
+                    cut -f1,2 -d',' |
+                        sed 's/len=/1,/g' |
+                            sed '1d' >> ${outpath}_VIBRANT_summary.temp
+        fi
+        ##virsorter 
+        if [[ ${output_list[@]} == *"output_virsorter"* ]]
+        then
+            cp ${inpath}_virsorter/$base/final-viral-boundary.tsv ${outpath}_virsorter_summary.tsv
+            cp ${inpath}_virsorter/$base/final-viral-combined.fa ${outpath}_virsorter_prophage_regions.fna
+            cut -f1,4,5 ${outpath}_virsorter_summary.tsv > ${outpath}_virsorter_summary.temp
+        fi
+        ##phageboost
+        if [[ ${output_list[@]} == *"output_phageboost"* ]]
+        then
+            cp ${inpath}_phageboost/$base/phages_$base.gff ${outpath}_phageboost_summary.tsv
+            cat ${inpath}_phageboost/$base/*.fasta > ${outpath}_phageboost_prophage_regions.fna
+            tr -s '[:blank:]' ',' <${outpath}_phageboost_summary.tsv |
+                sed '1d' |
+                    cut -f1,4,5 -d',' >> ${outpath}_phageboost_summary.temp
+        fi
+        ##create master 
+        echo "contig,prophage_start,prophage_end,genome,prediction_tool,length" > ${outpath}_predictions_summary.csv
+        ##perform tool specific actions
+        >$output_dir/prophage_regions/$base/merged_${base}_prophage_regions.fna
+        for tool in $tool_list
         do
-            base=$(basename $k)
-            outpath="$output_dir/prophage_regions/$base/${base}"
-            inpath="$output_dir/prophage_predictions/output"
-            mkdir -p $output_dir/prophage_regions/$base
-            echo "creating $outpath directory"
-            ###copy prophage stats
-            echo "aggregating $base predictions"
-            ##genomad
-            if [[ ${output_list[@]} == *"output_genomad"* ]]
-            then
-                cp ${inpath}_genomad/$base/${base}_summary/${base}_virus_genes.tsv \
-                    ${outpath}_genomad_summary.tsv
-                cp ${inpath}_genomad/$base/${base}_summary/${base}_virus.fna \
-                    ${outpath}_genomad_prophage_regions.fna
-                #remove locus tag suffixes
-                cut -f1,2,3 ${outpath}_genomad_summary.tsv |
-                    awk '{{sub("_.*","",$1)}} 1' |
-                        awk '{{sub("provirus","",$1)}} 1' |
-                            tr -d '|' |
-                                tr -s '[:blank:]' ','|
-                                    sed '1d' > ${outpath}_genomad_summary.temp_sorted
-                #determine prophage start position
-                sort -n -t',' -k3,3 ${outpath}_genomad_summary.temp_sorted |
-                    cut -d "," -f1,2 |
-                        awk 'BEGIN { FS = "," } ; !seen[$1]++' |
-                            sort -t',' -k1,1 > ${outpath}_genomad_summary.temp_min
-                #determine prophage stop position
-                sort -t ',' -k1,1 -k3,3nr ${outpath}_genomad_summary.temp_sorted |
-                    cut -d "," -f1,3 |
-                        awk 'BEGIN { FS = "," } ; !seen[$1]++' |
-                            sort -t',' -k1,1 |
-                                cut -d "," -f2 > ${outpath}_genomad_summary.temp_max
-                #combine
-                echo "contig,prophage_start,prophage_end" > ${outpath}_genomad_summary.temp
-                paste -d ',' ${outpath}_genomad_summary.temp_min \
-                    ${outpath}_genomad_summary.temp_max \
-                    >> ${outpath}_genomad_summary.temp
-            fi
-            ##phaster
-            if [[ ${output_list[@]} == *"output_PHASTER"* ]]
-            then
-                cp ${inpath}_PHASTER/$base/summary.txt \
-                    ${outpath}_phaster_summary.tsv
-                cp ${inpath}_PHASTER/$base/phage_regions.fna \
-                    ${outpath}_phaster_prophage_regions.fna
-                sed -e '1,32d' ${outpath}_PHASTER_summary.tsv |
-                    sed 's/ \+ /\t/g' |
-                        cut -f6 |
-                            cut -d "," -f1,7 |
-                                sed '1d' |
-                                    awk 'BEGIN { FS="," } {{sub(".*:","",$2)}} 1' \
-                                        > ${outpath}_PHASTER_summary.temp
-            fi
-            ##vibrant
-            if [[ ${output_list[@]} == *"output_VIBRANT"* ]]
-            then
-                cp ${inpath}_VIBRANT/$base/VIBRANT_$base/VIBRANT_results_${base}/VIBRANT_integrated_prophage_coordinates_${base}.tsv \
-                    ${outpath}_VIBRANT_summary_lysogenic.tsv
-                cp ${inpath}_VIBRANT/$base/VIBRANT_$base/VIBRANT_results_${base}/VIBRANT_summary_results_${base}.tsv \
-                    ${outpath}_VIBRANT_summary_lytic.tsv
-                cp ${inpath}_VIBRANT/$base/VIBRANT_$base/VIBRANT_phages_${base}/${base}.phages_combined.fna \
-                    ${outpath}_VIBRANT_prophage_regions.fna
-                tr -s '\t' ',' <${outpath}_VIBRANT_summary_lysogenic.tsv |
-                    cut -f1,6,7 -d',' |
-                        awk 'BEGIN{FS=OFS=","} {sub(/ .*/,"",$1)} 1' > ${outpath}_VIBRANT_summary.temp
-                tr -s ' ' ',' <${outpath}_VIBRANT_summary_lytic.tsv |
-                    sed '/fragment/d' |
-                        cut -f1,2 -d',' |
-                            sed 's/len=/1,/g' |
-                                sed '1d' >> ${outpath}_VIBRANT_summary.temp
-            fi
-            ##virsorter 
-            if [[ ${output_list[@]} == *"output_virsorter"* ]]
-            then
-                cp ${inpath}_virsorter/$base/final-viral-boundary.tsv \
-                    ${outpath}_virsorter_summary.tsv
-                cp ${inpath}_virsorter/$base/final-viral-combined.fa \
-                    ${outpath}_virsorter_prophage_regions.fna
-                cut -f1,4,5 ${outpath}_virsorter_summary.tsv > ${outpath}_virsorter_summary.temp
-            fi
-            ##phageboost
-            if [[ ${output_list[@]} == *"output_phageboost"* ]]
-            then
-                cp ${inpath}_phageboost/$base/phages_$base.gff \
-                    ${outpath}_phageboost_summary.tsv
-                cat ${inpath}_phageboost/$base/*.fasta \
-                    > ${outpath}_phageboost_prophage_regions.fna
-                tr -s '[:blank:]' ',' <${outpath}_phageboost_summary.tsv |
-                    sed '1d' |
-                        cut -f1,4,5 -d',' >> ${outpath}_phageboost_summary.temp
-            fi
-            ##create master 
-            echo "contig,prophage_start,prophage_end,genome,prediction_tool" > ${outpath}_predictions_summary.csv
-            ##perform tool specific actions
-            >$output_dir/prophage_regions/$base/merged_${base}_prophage_regions.fna
-            for tool in $tool_list
-            do
-                #replace fasta header with seq number
-                awk '/^>/{print ">" ++i; next}{print}' \
-                    ${outpath}_${tool}_prophage_regions.fna \
-                    > ${outpath}_${tool}_prophage_regions_temp.fna
-                mv ${outpath}_${tool}_prophage_regions_temp.fna \
-                    ${outpath}_${tool}_prophage_regions.fna
-                sed -i "s/^>/>${base}_${tool}_prediction_/" \
-                    ${outpath}_${tool}_prophage_regions.fna
-                cat ${outpath}_${tool}_prophage_regions.fna \
-                    >> $output_dir/prophage_regions/$base/merged_${base}_prophage_regions.fna
-                #combine predictions into single file
-                sed -i '1d' ${outpath}_${tool}_summary.temp 
-                tr -s '-' ',' <${outpath}_${tool}_summary.temp |
-                    tr -s '[:blank:]' ',' |
-                        awk -v base="$base" -F"," 'BEGIN { OFS = "," } {$4=base; print}' |
-                            awk -v tool="$tool" -F"," 'BEGIN { OFS = "," } {$5=tool; print}' |
-                                cat >> ${outpath}_predictions_summary.csv
-                done
-            rm $outpath*temp* $outpath*.tsv
+            #replace fasta header with seq number
+            awk '/^>/{print ">" ++i; next}{print}' \
+                ${outpath}_${tool}_prophage_regions.fna \
+                > ${outpath}_${tool}_prophage_regions_temp.fna
+            mv ${outpath}_${tool}_prophage_regions_temp.fna \
+                ${outpath}_${tool}_prophage_regions.fna
+            sed -i "s/^>/>${base}_${tool}_prediction_/" \
+                ${outpath}_${tool}_prophage_regions.fna
+            cat ${outpath}_${tool}_prophage_regions.fna \
+                >> $output_dir/prophage_regions/$base/merged_${base}_prophage_regions.fna
+            #combine predictions into single file
+            sed -i '1d' ${outpath}_${tool}_summary.temp 
+            tr -s '-' ',' <${outpath}_${tool}_summary.temp |
+                tr -s '[:blank:]' ',' |
+                    awk -v base="$base" -F"," 'BEGIN { OFS = "," } {$4=base; print}' |
+                        awk -v tool="$tool" -F"," 'BEGIN { OFS = "," } {$5=tool; print}' |
+                            awk -F, -v OFS="," '{$6=$3-$2+1}1' |
+                                awk -F',' '$6>1000' |
+                                    cat >> ${outpath}_predictions_summary.csv
         done
+        rm $outpath*temp* $outpath*.tsv
+    done
     #concatenate summary files together
     echo "contig,prophage_start,prophage_end,genome,prediction_tool" \
         > $output_dir/prophage_regions/concatenated_predictions_summary.csv
@@ -599,34 +594,34 @@ then
             sed '1d' >> $output_dir/prophage_regions/concatenated_predictions_summary.csv
     done
 
-#     #run checkv on prophage regions
-#     env=checkv
-#     download_reqs
-#     conda activate checkv
-#     #set up checkV database
-#     echo "checking for CheckV database up to 6 subdirectories deep from home"
-#     dbpath="$(sudo find ~ -maxdepth 6 -type d -iname "checkv-db*")"
-#     if [ -e "$dbpath" ]
-#     then
-#         echo "CheckV database detected at $dbpath" 
-#     else
-#         if [ -d "$master_db_dir_path" ]
-#         then   
-#             echo "CheckV database not detected, downloading to $master_db_dir_path directory"
-#             checkv download_database $master_db_dir_path
-#         else
-#             echo "CheckV database not detected, downloading to prophage_databases/ in $output_dir directory"
-#             mkdir -p $output_dir/prophage_databases
-#             checkv download_database $output_dir/prophage_databases
-#         fi
-#     fi
+    #run checkv on prophage regions
+    env=checkv
+    download_reqs
+    conda activate checkv
+    #set up checkV database
+    echo "checking for CheckV database up to 6 subdirectories deep from home"
+    dbpath="$(sudo find ~ -maxdepth 6 -type d -iname "checkv-db*")"
+    if [ -e "$dbpath" ]
+    then
+        echo "CheckV database detected at $dbpath" 
+    else
+        if [ -d "$master_db_dir_path" ]
+        then   
+            echo "CheckV database not detected, downloading to $master_db_dir_path directory"
+            checkv download_database $master_db_dir_path
+        else
+            echo "CheckV database not detected, downloading to prophage_databases/ in $output_dir directory"
+            mkdir -p $output_dir/prophage_databases
+            checkv download_database $output_dir/prophage_databases
+        fi
+    fi
 
-#     for k in $output_dir/prophage_regions/*/merged*.fna
-#     do
-#         base=$(basename $k _prophage_regions.fna)
-#         alert="running checkv on $base"
-#         alert_banner
-#         mkdir -p $(dirname $k)/${base}_checkv
-#         checkv end_to_end $k $(dirname $k)/${base}_checkv -t 8 -d $dbpath
-#     done
+    for k in $output_dir/prophage_regions/*/merged*.fna
+    do
+        base=$(basename $k _prophage_regions.fna)
+        alert="running checkv on $base"
+        alert_banner
+        mkdir -p $(dirname $k)/${base}_checkv
+        checkv end_to_end $k $(dirname $k)/${base}_checkv -t 8 -d $dbpath
+    done
 fi
