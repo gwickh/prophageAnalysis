@@ -194,13 +194,13 @@ then
 					base=$(basename $k _R1_001_trim.fastq.gz)
 					alert="ASSEMBLING $base WITH SHOVILL" 
 					alert_banner
-					mkdir assemblies/assembly_files/$base
+					mkdir -p $fasta/assemblies/short_read_assembly_files/$base
 					shovill \
 						--R1 $k \
 						--R2 $fasta/trimmed_paired/${base}_R2_001_trim.fastq.gz \
-						--outdir $fasta/assemblies/assembly_files/$base \
+						--outdir $fasta/assemblies/short_read_assembly_files/$base \
 						--force
-					cp $fasta/assemblies/assembly_files/${base}/contigs.fa \
+					cp $fasta/assemblies/short_read_assembly_files/${base}/contigs.fa \
 						$fasta/assemblies/contigs/${base}_contigs.fa
 				done
 		elif ( ls $fasta/*fastq.gz >/dev/null 2>&1 )
@@ -210,13 +210,13 @@ then
 					base=$(basename $k _R1_001_trim.fastq.gz)  
 					alert="ASSEMBLING $base WITH SHOVILL" 
 					alert_banner
-					mkdir assemblies/assembly_files/$base
+					mkdir assemblies/short_read_assembly_files/$base
 					shovill \
 						--R1 $k \
 						--R2 $fasta/${base}_R2_001_trim.fastq.gz \
-						--outdir $fasta/assemblies/assembly_files/$base \
+						--outdir $fasta/assemblies/short_read_assembly_files/$base \
 						--force
-					cp $fastq/assemblies/assembly_files/${base}/contigs.fa \
+					cp $fastq/assemblies/short_read_assembly_files/${base}/contigs.fa \
 						$fasta/assemblies/contigs/${base}_contigs.fa
 				done
 		else
