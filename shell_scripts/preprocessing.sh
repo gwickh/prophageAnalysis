@@ -177,7 +177,7 @@ fi
 
 if [ "$assemble" == true ]
 then
-	if [ $3 == "short" ] || [ $3 == "Short"]
+	if [ $3 == "short" ] || [ $3 == "Short" ]
 	then
 		#create conda env if not already present
 		for env in {shovill,quast}
@@ -224,7 +224,7 @@ then
 			exit 1
 		fi
 		conda deactivate
-	elif [ $3 == "hybrid" ] || [ $3 == "Hybrid"]
+	elif [ $3 == "hybrid" ] || [ $3 == "Hybrid" ]
 	then
 		for env in {unicycler,quast}
 			do
