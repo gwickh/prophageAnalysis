@@ -22,7 +22,14 @@ count_phage_predictions_mean = count_phage_predictions\
     .mean("count_phage_predictions")\
     .rename(columns = {"count_phage_predictions": "mean_count"})\
 
-count_phage_predictions = count_phage_predictions.merge(count_phage_predictions_mean, on="genome")
+count_phage_predictions = count_phage_predictions\
+    .merge(count_phage_predictions_mean, on="genome")\
+    .sort_values(
+        'prediction_tool', 
+        ascending = True,
+        key=lambda col: col.str.lower()
+        )\
+    .reset_index()
 
 #plot histogram of counts per tool
 def specs(x, **kwargs):
@@ -41,7 +48,7 @@ g = sns.FacetGrid(
     height = 4,
     aspect = 0.75)
 g.map(specs,'count_phage_predictions')
-g.fig.suptitle("Distributions of number of prophage regions by prediction tool", y = 1.05)
+g.fig.suptitle("Distributions of number of prophage regions by prediction tool (bin = 1)", y = 1.05)
 g.set_titles("{col_name}") 
 g.set_axis_labels('Number of Predicted Prophage\nRegions >1000 bp')
 plt.show()
@@ -66,7 +73,7 @@ def label(x, color, label):
     ax.text(0, .2, label, color='black', fontsize=13,
             ha="left", va="center", transform=ax.transAxes)
 g2.map(label, "prediction_tool")
-g2.fig.suptitle("Distributions of number of prophage regions by prediction tool", y = 0.90)
+g2.fig.suptitle("Distributions of number of prophage regions by prediction tool", y = 1)
 g2.fig.subplots_adjust(hspace=-.5)
 g2.set_titles("")
 g2.set(ylabel=None)
@@ -85,8 +92,22 @@ g3 = sns.swarmplot(
     x = "prediction_tool",
     y = "count_phage_predictions",
     hue = "prediction_tool",
-    size = 6
+    size = 6,
+    alpha = 0.4
     )
+sns.pointplot(
+    ax = g3,
+    data = count_phage_predictions,
+    x = "prediction_tool",
+    y = "count_phage_predictions",
+    linestyle = "none",
+    marker = "_",
+    color = 'black',
+    zorder = 10,
+    markersize = 20, 
+    markeredgewidth = 2,
+    errwidth = 2,
+    capsize = 0.1)
 g3.tick_params(labelsize=10)
 g3.set_title(
     'Distributions of number of prophage regions by prediction tool',
