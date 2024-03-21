@@ -30,7 +30,7 @@ download_reqs() {
 		echo "$env conda env present" 
 	else
 		echo "creating conda env: $env" 
-		conda create $env -n $env -c bioconda -c conda-forge
+		conda create $env -n $env -c bioconda -c conda-forge -y
 	fi
 }
 
@@ -290,7 +290,7 @@ then
         fi
     fi
     #run VIBRANT
-    if ( ls *.f* >/dev/null 2>&1 )
+    if ( ls $assembly/*.f* >/dev/null 2>&1 )
     then
         for k in $assembly/*.f*
             do
@@ -313,21 +313,21 @@ fi
 
 if [ "$virsorter" == true ]
 then
-    ##run virsorter
+    ##run VirSorter
     #create conda environments if not already present
     if [ -e "$envpath/virsorter/" ] 
     then
-        echo "virsorter present at $envpath" 
+        echo "VirSorter present at $envpath" 
     else
-        echo "virsorter not present at $envpath: building from mamba" 
+        echo "VirSorter not present at $envpath: building from mamba" 
         mamba create -n virsorter -y -c conda-forge -c bioconda \
             virsorter=2.2.4 "python>=3.6,<=3.10" scikit-learn=0.22.1 imbalanced-learn pandas seaborn hmmer==3.3 \
             prodigal screed ruamel.yaml "snakemake>=5.18,<=5.26" click "conda-package-handling<=1.9" numpy=1.23
     fi
-    #set up virsorter2 database
+    #set up VirSorter2 database
     conda activate virsorter
     echo "checking for VirSorter2 database up to 6 subdirectories deep from home"
-    dbpath="$(sudo find ~ -maxdepth 6 -type d -iname virsorter_db)"
+    dbpath="$(sudo find ~ -maxdepth 6 -type d -iname VirSorter_db)"
     if [ -d "$dbpath" ]
     then
         echo "VirSorter2 database detected" 
@@ -335,29 +335,29 @@ then
         if [ -d "$master_db_dir_path" ]
         then
             echo "Virsorter2 database not detected, downloading to $master_db_dir_path directory"
-            virsorter setup -d $master_db_dir_path/virsorter_db/ -j 4
+            virsorter setup -d $master_db_dir_path/VirSorter_db/ -j 4
         else
             echo "Virsorter2 database not detected, downloading to prophage_databases/ in $output_dir directory"
             mkdir $output_dir/prophage_databases/
-            virsorter setup -d $output_dir/prophage_databases/virsorter_db/ -j 4
+            virsorter setup -d $output_dir/prophage_databases/VirSorter_db/ -j 4
         fi
     fi
-    #run virsorter
-    if ( ls *.f* >/dev/null 2>&1 )
+    #run VirSorter
+    if ( ls $assembly/*.f* >/dev/null 2>&1 )
     then
         for k in $assembly/*.f*
             do
                 base=$(basename $k | cut -d. -f1)
                 alert="RUNNING VIRSORTER ON ASSEMBLY $k"
                 alert_banner
-                mkdir -p $output_dir/output_virsorter/$base/;
+                mkdir -p $output_dir/output_VirSorter/$base/;
                 virsorter \
                     run \
-                    -w $output_dir/output_virsorter/$base \
+                    -w $output_dir/output_VirSorter/$base \
                     -i $k \
                     --min-length 1500 \
                     --rm-tmpdir \
-                    -d $master_db_dir_path/virsorter_db/
+                    -d $master_db_dir_path/VirSorter_db/
         done
     else
         echo "no fasta files detected in $assembly"
@@ -371,9 +371,9 @@ then
     #create conda environments if not already present
     env=genomad
     download_reqs
-    #set up genomad database
+    #set up GeNomad database
     echo "checking for GeNomad database up to 6 subdirectories deep from home"
-    dbpath="$(sudo find ~ -maxdepth 6 -type d -iname genomad_db)"
+    dbpath="$(sudo find ~ -maxdepth 6 -type d -iname GeNomad_db)"
     conda activate $env
     if [ -e "$dbpath" ]
     then
@@ -389,21 +389,21 @@ then
             genomad download-database $output_dir/prophage_databases
         fi
     fi
-    #run genomad
-    if ( ls *.f* >/dev/null 2>&1 )
+    #run GeNomad
+    if ( ls $assembly/*.f* >/dev/null 2>&1 )
     then
         for k in $assembly/*.f*
             do
                 base=$(basename $k | cut -d. -f1)
                 alert="RUNNING GENOMAD ON ASSEMBLY $k"
                 alert_banner
-                mkdir -p $output_dir/output_genomad/$base/;
+                mkdir -p $output_dir/output_GeNomad/$base/;
                 genomad \
                     end-to-end \
                     --cleanup \
                     --splits 4 \
                     $k \
-                    output_genomad/$base \
+                    output_GeNomad/$base \
                     $dbpath
             done
     else
@@ -421,20 +421,22 @@ then
         echo "creating conda env: PhageBoost-env" 
         conda create -y -n PhageBoost-env python=3.7
         conda activate PhageBoost-env
-        pip install typing_extensions pyrodigal==0.7.2 xgboost==1.0.2 git+https://github.com/ku-cbd/PhageBoost
+        pip install typing_extensions pyrodigal==0.7.2 xgboost==1.0.2 git+https://github.com/ku-cbd/PhageBoost 
+        conda deactivate
     fi
-    # run phageboost
-    if ( ls *.f* >/dev/null 2>&1 )
+    # run PhageBoost
+    if ( ls $assembly/*.f* >/dev/null 2>&1 )
     then
+        conda activate PhageBoost-env
         for k in $assembly/*.f*
             do
                 base=$(basename $k | cut -d. -f1)
                 alert="RUNNING PHAGEBOOST ON GENOME $base"
                 alert_banner
-                mkdir -p $output_dir/output_phageboost/$base/;
+                mkdir -p $output_dir/output_PhageBoost/$base/;
                 PhageBoost \
                     -f $k \
-                    -o $output_dir/output_phageboost/$base \
+                    -o $output_dir/output_PhageBoost/$base \
                     -c 1000 \
                     --threads 15
 
@@ -478,36 +480,36 @@ then
         echo "creating $outpath directory"
         ###copy prophage stats
         echo "aggregating $base predictions"
-        ##genomad
-        if [[ ${output_list[@]} == *"output_genomad"* ]]
+        ##GeNomad
+        if [[ ${output_list[@]} == *"output_GeNomad"* ]]
         then
-            cp ${inpath}_genomad/$base/${base}_summary/${base}_virus_genes.tsv \
-                ${outpath}_genomad_summary.tsv
-            cp ${inpath}_genomad/$base/${base}_summary/${base}_virus.fna \
-                ${outpath}_genomad_prophage_regions.fna
+            cp ${inpath}_GeNomad/$base/${base}_summary/${base}_virus_genes.tsv \
+                ${outpath}_GeNomad_summary.tsv
+            cp ${inpath}_GeNomad/$base/${base}_summary/${base}_virus.fna \
+                ${outpath}_GeNomad_prophage_regions.fna
             #remove locus tag suffixes
-            cut -f1,2,3 ${outpath}_genomad_summary.tsv |
+            cut -f1,2,3 ${outpath}_GeNomad_summary.tsv |
                 awk '{{sub("_.*","",$1)}} 1' |
                     awk '{{sub("provirus","",$1)}} 1' |
                         tr -d '|' |
                             tr -s '[:blank:]' ','|
-                                sed '1d' > ${outpath}_genomad_summary.temp_sorted
+                                sed '1d' > ${outpath}_GeNomad_summary.temp_sorted
             #determine prophage start position
-            sort -n -t',' -k3,3 ${outpath}_genomad_summary.temp_sorted |
+            sort -n -t',' -k3,3 ${outpath}_GeNomad_summary.temp_sorted |
                 cut -d "," -f1,2 |
                     awk 'BEGIN { FS = "," } ; !seen[$1]++' |
-                        sort -t',' -k1,1 > ${outpath}_genomad_summary.temp_min
+                        sort -t',' -k1,1 > ${outpath}_GeNomad_summary.temp_min
             #determine prophage stop position
-            sort -t ',' -k1,1 -k3,3nr ${outpath}_genomad_summary.temp_sorted |
+            sort -t ',' -k1,1 -k3,3nr ${outpath}_GeNomad_summary.temp_sorted |
                 cut -d "," -f1,3 |
                     awk 'BEGIN { FS = "," } ; !seen[$1]++' |
                         sort -t',' -k1,1 |
-                            cut -d "," -f2 > ${outpath}_genomad_summary.temp_max
+                            cut -d "," -f2 > ${outpath}_GeNomad_summary.temp_max
             #combine
-            echo "contig,prophage_start,prophage_end" > ${outpath}_genomad_summary.temp
-            paste -d ',' ${outpath}_genomad_summary.temp_min \
-                ${outpath}_genomad_summary.temp_max \
-                >> ${outpath}_genomad_summary.temp
+            echo "contig,prophage_start,prophage_end" > ${outpath}_GeNomad_summary.temp
+            paste -d ',' ${outpath}_GeNomad_summary.temp_min \
+                ${outpath}_GeNomad_summary.temp_max \
+                >> ${outpath}_GeNomad_summary.temp
             fi
         ##phaster
         if [[ ${output_list[@]} == *"output_PHASTER"* ]]
@@ -539,21 +541,21 @@ then
                         sed 's/len=/1,/g' |
                             sed '1d' >> ${outpath}_VIBRANT_summary.temp
         fi
-        ##virsorter 
-        if [[ ${output_list[@]} == *"output_virsorter"* ]]
+        ##VirSorter 
+        if [[ ${output_list[@]} == *"output_VirSorter"* ]]
         then
-            cp ${inpath}_virsorter/$base/final-viral-boundary.tsv ${outpath}_virsorter_summary.tsv
-            cp ${inpath}_virsorter/$base/final-viral-combined.fa ${outpath}_virsorter_prophage_regions.fna
-            cut -f1,4,5 ${outpath}_virsorter_summary.tsv > ${outpath}_virsorter_summary.temp
+            cp ${inpath}_VirSorter/$base/final-viral-boundary.tsv ${outpath}_VirSorter_summary.tsv
+            cp ${inpath}_VirSorter/$base/final-viral-combined.fa ${outpath}_VirSorter_prophage_regions.fna
+            cut -f1,4,5 ${outpath}_VirSorter_summary.tsv > ${outpath}_VirSorter_summary.temp
         fi
-        ##phageboost
-        if [[ ${output_list[@]} == *"output_phageboost"* ]]
+        ##PhageBoost
+        if [[ ${output_list[@]} == *"output_PhageBoost"* ]]
         then
-            cp ${inpath}_phageboost/$base/phages_$base.gff ${outpath}_phageboost_summary.tsv
-            cat ${inpath}_phageboost/$base/*.fasta > ${outpath}_phageboost_prophage_regions.fna
-            tr -s '[:blank:]' ',' <${outpath}_phageboost_summary.tsv |
+            cp ${inpath}_PhageBoost/$base/phages_$base.gff ${outpath}_PhageBoost_summary.tsv
+            cat ${inpath}_PhageBoost/$base/*.fasta > ${outpath}_PhageBoost_prophage_regions.fna
+            tr -s '[:blank:]' ',' <${outpath}_PhageBoost_summary.tsv |
                 sed '1d' |
-                    cut -f1,4,5 -d',' >> ${outpath}_phageboost_summary.temp
+                    cut -f1,4,5 -d',' >> ${outpath}_PhageBoost_summary.temp
         fi
         ##create master 
         echo "contig,prophage_start,prophage_end,genome,prediction_tool,length" > ${outpath}_predictions_summary.csv
