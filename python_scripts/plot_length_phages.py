@@ -97,7 +97,7 @@ g3 = sns.stripplot(
     x = "prediction_tool",
     y = "length",
     hue = "prediction_tool",
-    alpha = 0.15
+    alpha = 0.1
     )
 sns.pointplot(
     ax = g3,
