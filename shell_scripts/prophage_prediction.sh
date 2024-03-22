@@ -35,13 +35,13 @@ download_reqs() {
 }
 
 #set arguments
-ARGS=$(getopt --options i:o:p:vgsbah --long "input,outdir,phaster,vibrant,genomad,virsorter,phageboost,analyse,help" -- "$@")
+ARGS=$(getopt --options i:o:p:vgsbah --long "input,outdir,phastest,vibrant,genomad,virsorter,phageboost,analyse,help" -- "$@")
 
 eval set -- "$ARGS"
 
 input="false"
 outdir="false"
-phaster="false"
+phastest="false"
 vibrant="false"
 genomad="false"
 virsorter="false"
@@ -58,8 +58,8 @@ while true
             -o|--outdir)
                 outdir="true"
                 shift;;
-			-p|--phaster)
-				phaster="true"
+			-p|--phastest)
+				phastest="true"
 				shift;;
 			-v|--vibrant)
 				vibrant="true"
@@ -83,7 +83,7 @@ while true
 				break;;
 			*)
 				echo "Unknown option specified" 
-				echo "Options:  [-i --input <contigs>] [-o --outdir </output/directory/>] [-p --phaster] [-v --vibrant ]"
+				echo "Options:  [-i --input <contigs>] [-o --outdir </output/directory/>] [-p --phastest] [-v --vibrant ]"
                 echo "        [-g --genomad] [-s --virsorter] [-h --help]"
 				exit 1;;
 		esac
@@ -92,15 +92,15 @@ while true
 ##create help message
 if [ "$help" == true ]
 then
-	echo "Script to perform prophage prediction from bacterial genomes using PHASTER, VIBRANT, GeNomad and"
+	echo "Script to perform prophage prediction from bacterial genomes using PHASTEST, VIBRANT, GeNomad and"
     echo "VirSorter and standardise, concatenate and analyse the output consensus"
 	echo ""
-	echo "Options: [-i --input <contigs>] [-p --phaster] [-v --vibrant ] [-g --genomad] [-s --virsorter]"
+	echo "Options: [-i --input <contigs>] [-p --phastest] [-v --vibrant ] [-g --genomad] [-s --virsorter]"
 	echo "      [-h --help]"
 	echo ""
 	echo "-i --input        : directory containing assembled contigs"
     echo "-o --outdir       : directory to write to, defaults to current dir"
-	echo "-p --phaster  submit      : submit genomes to PHASTER web service API for prophage prediction"
+	echo "-p --phastest  submit      : submit genomes to PHASTEST web service API for prophage prediction"
 	echo "              retrieve    : check status of submitted genomes and retrieve completed predictions"
 	echo "-v --vibrant      : run VIBRANT for prophage prediction"
 	echo "-g --genomad      : run GeNomad for prophage prediction"
@@ -151,38 +151,38 @@ then
     output_dir="."
 fi
 
-if [ "$phaster" == true ]
+if [ "$phastest" == true ]
 then
-    #run PHASTER submit script
+    #run PHASTEST submit script
     if [ "$4" == "submit" ] || [ "$4" == "Submit" ]
     then
-        #submit genomes to PHASTER web service
-        echo "submitting genomes to PHASTER web server in path $assembly"
+        #submit genomes to PHASTEST web service
+        echo "submitting genomes to PHASTEST web server in path $assembly"
         for k in $assembly/*.f*
             do
                 base=$(basename $k | cut -f 1 -d '.')
                 echo $base
                 if (( $(grep -o '>' $k | wc -l) == 1 ))
                     then
-                        alert="RUNNING PHASTER ON SINGLE CONTIG ASSEMBLY $k"
+                        alert="RUNNING PHASTEST ON SINGLE CONTIG ASSEMBLY $k"
                         alert_banner
                         wget \
                             --post-file="$k" \
-                            "http://phaster.ca/phaster_api" \
+                            "https://phastest.ca/phastest_api" \
                             -O $output_dir/$base.txt
                     elif (( $(grep -o '>' $k | wc -l) > 1 ))
                     then   
-                        alert="RUNNING PHASTER ON MULTIFASTA ASSEMBLY $k"
+                        alert="RUNNING PHASTEST ON MULTIFASTA ASSEMBLY $k"
                         alert_banner
                         wget \
                             --post-file="$k" \
-                            "http://phaster.ca/phaster_api?contigs=1" \
+                            "https://phastest.ca/phastest_api?contigs=1" \
                             -O $output_dir/$base.txt
                     else 
                         echo "ERROR: No .fasta files found in $assembly"
                 fi
         done    
-        #acquire submitted filenames and PHASTER submission ID
+        #acquire submitted filenames and PHASTEST submission ID
         > $output_dir/submitted_genome_names.temp
         > $output_dir/submitted_genome_IDs.temp
         > $output_dir/submitted_genomes.csv
@@ -198,7 +198,7 @@ then
             $output_dir/submitted_genome_IDs.temp \
             >> $output_dir/submitted_genomes.csv
         rm  $output_dir/*.txt  $output_dir/*.temp
-    #run phaster retrieve script
+    #run phastest retrieve script
     elif [ "$4" == "retrieve" ] || [ "$4" == "Retrieve" ]
     then
         if [ -e $assembly/submitted_genomes.csv ]
@@ -207,10 +207,10 @@ then
         else
             echo "ERROR: Submitted_genomes.csv not found. Please use directory containing submitted_genomes.csv as --input"
         fi
-        #get zip files from PHASTER server based on list of IDs from submitted_genomes.csv
+        #get zip files from PHASTEST server based on list of IDs from submitted_genomes.csv
         while IFS="," read field1 field2
             do
-                curl "phaster.ca/submissions/$field2.zip" --output $output_dir/$field1.zip 
+                curl "phastest.ca/submissions/$field2.zip" --output $output_dir/$field1.zip 
             done < <(tail -n +2 $assembly/submitted_genomes.csv)
         #remove empty zip files, extract zip files to output directory, if not already present
         for k in $output_dir/*.zip
@@ -218,14 +218,14 @@ then
                 base=$(basename $k .zip)
                 if (( $(du -k "$k" | cut -f 1) < 40))
                 then
-                    echo "$k empty, PHASTER not yet complete"
-                elif [ -e "$output_dir/output_PHASTER/$base/summary.txt" ]
+                    echo "$k empty, PHASTEST not yet complete"
+                elif [ -e "$output_dir/output_PHASTEST/$base/summary.txt" ]
                 then
                     echo "$k already present"
                 else
-                    echo "unzipping $k, PHASTER complete"
-                    mkdir -p $output_dir/output_PHASTER/$base 
-                    unzip $k -d $output_dir/output_PHASTER/$base
+                    echo "unzipping $k, PHASTEST complete"
+                    mkdir -p $output_dir/output_PHASTEST/$base 
+                    unzip $k -d $output_dir/output_PHASTEST/$base
                 fi
                 rm -r $k
             done
@@ -238,12 +238,12 @@ then
         while IFS="," read field1 field2
             do
                 if 
-                    [ -e $output_dir/output_PHASTER/$field1/summary.txt ]
+                    [ -e $output_dir/output_PHASTEST/$field1/summary.txt ]
                 then
-                    echo "Completed $field1 predictions downloaded to $output_dir/output_PHASTER/$field1"
-                    echo "$field1,http://phaster.ca/phaster_api?acc=$field2" >> $output_dir/finished_queries.temp
+                    echo "Completed $field1 predictions downloaded to $output_dir/output_PHASTEST/$field1"
+                    echo "$field1,http://phastest.ca/phastest?acc=$field2" >> $output_dir/finished_queries.temp
                 else
-                    echo "$field1,http://phaster.ca/phaster_api?acc=$field2" >> $output_dir/unfinished_queries.temp
+                    echo "$field1,http://phastest.ca/phastest?acc=$field2" >> $output_dir/unfinished_queries.temp
                 fi
             done < <(tail -n +2 $output_dir/submitted_genomes.csv)
         for k in {finished,unfinished}
@@ -260,7 +260,7 @@ then
                 fi
             done
     else
-        echo "ERROR: No valid input specified for option --phaster: please use 'submit' or 'retrieve'"
+        echo "ERROR: No valid input specified for option --phastest: please use 'submit' or 'retrieve'"
     fi
 fi
 
@@ -511,17 +511,17 @@ then
                 ${outpath}_GeNomad_summary.temp_max \
                 >> ${outpath}_GeNomad_summary.temp
             fi
-        ##phaster
-        if [[ ${output_list[@]} == *"output_PHASTER"* ]]
+        ##phastest
+        if [[ ${output_list[@]} == *"output_PHASTEST"* ]]
         then
-            cp ${inpath}_PHASTER/$base/summary.txt ${outpath}_phaster_summary.tsv
-            cp ${inpath}_PHASTER/$base/phage_regions.fna ${outpath}_phaster_prophage_regions.fna
-            sed -e '1,32d' ${outpath}_PHASTER_summary.tsv |
+            cp ${inpath}_PHASTEST/$base/summary.txt ${outpath}_phastest_summary.tsv
+            cp ${inpath}_PHASTEST/$base/phage_regions.fna ${outpath}_phastest_prophage_regions.fna
+            sed -e '1,32d' ${outpath}_PHASTEST_summary.tsv |
                 sed 's/ \+ /\t/g' |
                     cut -f6 |
                         cut -d "," -f1,7 |
                             sed '1d' |
-                                awk 'BEGIN { FS="," } {{sub(".*:","",$2)}} 1' > ${outpath}_PHASTER_summary.temp
+                                awk 'BEGIN { FS="," } {{sub(".*:","",$2)}} 1' > ${outpath}_PHASTEST_summary.temp
         fi
         ##vibrant
         if [[ ${output_list[@]} == *"output_VIBRANT"* ]]
