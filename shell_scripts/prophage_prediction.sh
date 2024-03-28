@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #author:    :Gregory Wickham
-#date:      :20240313
-#version    :1.5.0
+#date:      :20240328
+#version    :1.5.1
 #desc       :Script for running prophage prediction tools
 #usage		:bash prophage_prediction.sh <directory/with/contigs>
 #===========================================================================================================
@@ -191,39 +191,40 @@ then
             echo $(basename $k .txt) >> $output_dir/submitted_genome_names.temp
             cut -d'"' -f4 $k >> $output_dir/submitted_genome_IDs.temp
         done
-        echo "genome,submission_ID" > $output_dir/submitted_genomes.csv
+        echo "genome,submission_ID" > $output_dir/submitted_genomes.temp
         paste \
             -d ',' \
             $output_dir/submitted_genome_names.temp \
             $output_dir/submitted_genome_IDs.temp \
-            >> $output_dir/submitted_genomes.csv
+            >> $output_dir/submitted_genomes.temp
+        tr -d '\r' < submitted_genomes.temp > submitted_genomes.csv
         rm  $output_dir/*.txt  $output_dir/*.temp
     #run phastest retrieve script
     elif [ "$4" == "retrieve" ] || [ "$4" == "Retrieve" ]
     then
-        if [ -e $assembly/submitted_genomes.csv ]
+        if [ -e $output_dir/submitted_genomes.csv ]
         then
-            echo "submitted_genomes.csv found in $assembly"
+            echo "submitted_genomes.csv found in $output_dir"
         else
             echo "ERROR: Submitted_genomes.csv not found. Please use directory containing submitted_genomes.csv as --input"
         fi
         #get zip files from PHASTEST server based on list of IDs from submitted_genomes.csv
         while IFS="," read field1 field2
             do
-                curl "phastest.ca/submissions/$field2.zip" --output $output_dir/$field1.zip 
-            done < <(tail -n +2 $assembly/submitted_genomes.csv)
+                curl "https://phastest.ca/submissions/${field2}.zip" --output $field1.zip
+            done < <(tail -n +2 $output_dir/submitted_genomes.csv)
         #remove empty zip files, extract zip files to output directory, if not already present
         for k in $output_dir/*.zip
             do
                 base=$(basename $k .zip)
-                if (( $(du -k "$k" | cut -f 1) < 40))
+                if (( $(du -k "$k" | cut -f 1) < 250))
                 then
                     echo "$k empty, PHASTEST not yet complete"
                 elif [ -e "$output_dir/output_PHASTEST/$base/summary.txt" ]
                 then
                     echo "$k already present"
                 else
-                    echo "unzipping $k, PHASTEST complete"
+                    echo "$k PHASTEST complete"
                     mkdir -p $output_dir/output_PHASTEST/$base 
                     unzip $k -d $output_dir/output_PHASTEST/$base
                 fi
@@ -356,8 +357,7 @@ then
                     -w $output_dir/output_VirSorter/$base \
                     -i $k \
                     --min-length 1500 \
-                    --rm-tmpdir \
-                    -d $master_db_dir_path/VirSorter_db/
+                    --rm-tmpdir
         done
     else
         echo "no fasta files detected in $assembly"
