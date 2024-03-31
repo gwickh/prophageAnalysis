@@ -39,8 +39,6 @@ def specs(x, **kwargs):
         binwidth = 1,
         kde = True)
     ax.axvline(x.median(), color='k', ls='--', lw=2)
-plt.rcParams['figure.dpi'] = 600
-plt.rcParams['savefig.dpi'] = 600
 g = sns.FacetGrid(
     data = count_phage_predictions, 
     col = 'prediction_tool',
@@ -51,6 +49,7 @@ g.fig.suptitle("Distributions of number of prophage regions by prediction tool (
 g.set_titles("{col_name}") 
 g.set_axis_labels('Number of Predicted Prophage\nRegions >1000 bp')
 plt.show()
+sns.reset_defaults()
 
 #plot counts per tool as ridgeplot
 sns.set_theme(style="white", rc={"axes.facecolor": (0, 0, 0, 0)})
@@ -66,10 +65,11 @@ g2.map_dataframe(
     x = "count_phage_predictions",
     fill = True,
     alpha = 0.5,
+    clip = (0, 25)
     )
 def label(x, color, label):
     ax = plt.gca()
-    ax.text(0, .2, label, color='black', fontsize=13,
+    ax.text(-0.1, .2, label, color='black', fontsize=13,
             ha="left", va="center", transform=ax.transAxes)
 g2.map(label, "prediction_tool")
 g2.fig.suptitle("Distributions of number of prophage regions by prediction tool", y = 1)
@@ -82,17 +82,12 @@ g2.set_axis_labels('Number of Predicted Prophage Regions >1000 bp')
 plt.show()
 sns.reset_defaults()
 
-#plot counts per tool as swarmplot
-plt.figure(figsize=(10,6))
-plt.rcParams['figure.dpi'] = 600
-plt.rcParams['savefig.dpi'] = 600
-g3 = sns.swarmplot(
+#plot counts per tool as boxenplot
+g3 = sns.boxenplot(
     data = count_phage_predictions,
     x = "prediction_tool",
     y = "count_phage_predictions",
     hue = "prediction_tool",
-    size = 6,
-    alpha = 0.4
     )
 sns.pointplot(
     ax = g3,
@@ -100,13 +95,11 @@ sns.pointplot(
     x = "prediction_tool",
     y = "count_phage_predictions",
     linestyle = "none",
-    marker = "_",
+    errorbar = None,
+    marker = "+",
     color = 'black',
-    zorder = 10,
-    markersize = 20, 
-    markeredgewidth = 2,
-    errwidth = 2,
-    capsize = 0.1)
+    zorder = 10
+    )
 g3.tick_params(labelsize=10)
 g3.set_title(
     'Distributions of number of prophage regions by prediction tool',
@@ -121,3 +114,4 @@ g3.set_xlabel(
     fontsize = 10
     )
 plt.show()
+sns.reset_defaults()

@@ -45,7 +45,7 @@ g = sns.FacetGrid(
     )
 g.map(specs,'length')
 g.fig.suptitle(
-    "Distributions of length of predicted prophage regions (within 95% CI [3659, 97274]) by prediction tool (bin = 5,000)", 
+    "Distributions of length of predicted prophage regions (within 95% CI [4061, 96881]) by prediction tool (bin = 5,000)", 
     y = 1.05)
 g.set_titles("{col_name}") 
 g.set_axis_labels(
@@ -53,6 +53,7 @@ g.set_axis_labels(
     "Proportion"
     )
 plt.show()
+sns.reset_defaults()
 
 #plot lengths per tool as ridgeplot
 sns.set_theme(style="white", rc={"axes.facecolor": (0, 0, 0, 0)})
@@ -68,6 +69,7 @@ g2.map_dataframe(
     x = "length",
     fill = True,
     alpha = 0.5,
+    clip=(4061, 96881)
     )
 def label(x, color, label):
     ax = plt.gca()
@@ -76,7 +78,7 @@ def label(x, color, label):
     ax.set_xlim(1000, 100000)
 g2.map(label, "prediction_tool")
 g2.fig.suptitle(
-    "Distribution of lengths of predicted prophage regions (within 95% CI [3659, 97274]) by prediction tool", 
+    "Distribution of lengths of predicted prophage regions (within 95% CI [4061, 96881]) by prediction tool", 
     y = 0.9
     )
 g2.fig.subplots_adjust(hspace=-.5)
@@ -89,15 +91,11 @@ plt.show()
 sns.reset_defaults()
 
 #plot counts per tool as stripplot
-plt.figure(figsize=(10,6))
-plt.rcParams['figure.dpi'] = 600
-plt.rcParams['savefig.dpi'] = 600
-g3 = sns.stripplot(
+g3 = sns.boxenplot(
     data = phage_predictions_p95,
     x = "prediction_tool",
     y = "length",
     hue = "prediction_tool",
-    alpha = 0.1
     )
 sns.pointplot(
     ax = g3,
@@ -105,16 +103,14 @@ sns.pointplot(
     x = "prediction_tool",
     y = "length",
     linestyle = "none",
-    marker = "_",
+    errorbar = None,
+    marker = "+",
     color = 'black',
-    zorder = 10,
-    markersize = 20, 
-    markeredgewidth = 2,
-    errwidth = 2,
-    capsize = 0.1)
+    zorder = 10
+    )
 g3.tick_params(labelsize=10)
 g3.set_title(
-    'Distribution of lengths of predicted prophage regions (within 95% CI [3659, 97274]) by prediction tool',
+    'Distribution of lengths of predicted prophage regions \n(within 95% CI [4061, 96881]) by prediction tool',
     fontsize = 10
     )
 g3.set_ylabel(
@@ -126,3 +122,4 @@ g3.set_xlabel(
     fontsize = 10
     )
 plt.show()
+sns.reset_defaults()
