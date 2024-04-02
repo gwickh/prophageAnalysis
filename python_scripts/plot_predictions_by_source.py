@@ -235,3 +235,58 @@ g3.set_xlabel(
     )
 plt.show()
 sns.reset_defaults()
+
+#plot pie chart of species 
+count_species = count_phage_predictions[["genome","closest_match"]]
+
+species_freq = (count_species['closest_match'].value_counts())/count_species.shape[0]
+less_freq_species = species_freq[species_freq<=0.02]    
+count_species.loc[count_species["closest_match"].isin(less_freq_species.index.tolist())] = "Other"
+
+count_species = count_species[["genome","closest_match"]]\
+    .groupby(["closest_match"])\
+    .count()\
+    .sort_values(
+        'genome', 
+        ascending = False)\
+    .reset_index()
+
+def func(pct, allvals):
+    absolute = int(np.round(pct/100.*np.sum(allvals)))
+    return f"{pct:.1f}%\n({absolute/5})"
+
+plt.pie(
+    data = count_species, 
+    x = "genome",
+    labels = "closest_match",
+    autopct = lambda pct: func(pct, count_species['genome']),
+    pctdistance = 0.75,
+    )
+centre_circle = plt.Circle((0, 0), 0.50, fc='white')
+fig = plt.gcf()
+fig.gca().add_artist(centre_circle)
+plt.title('Foodborne Pseudomonas Collection by Species')
+plt.show()
+
+#plot pie chart of source
+count_source = count_phage_predictions[["genome","source"]]\
+    .groupby(["source"])\
+    .count()\
+    .reset_index()
+    
+def func(pct, allvals):
+    absolute = int(np.round(pct/100.*np.sum(allvals)))
+    return f"{pct:.1f}%\n({absolute/5})"
+
+plt.pie(
+    data = count_source, 
+    x = "genome",
+    labels = "source",
+    autopct = lambda pct: func(pct, count_source['genome']),
+    pctdistance = 0.75,
+    )
+centre_circle = plt.Circle((0, 0), 0.50, fc='white')
+fig = plt.gcf()
+fig.gca().add_artist(centre_circle)
+plt.title('Foodborne Pseudomonas Collection by Source')
+plt.show()
