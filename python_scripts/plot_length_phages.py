@@ -1,6 +1,8 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import scipy as sp
+import numpy as np
 
 project_path = "~/whitchurch_group/PRO_Foodborne_Pseudomonas_Prophages/prophage_regions/"
 phage_predictions = pd.read_csv(project_path+"concatenated_predictions_summary.csv")
@@ -120,6 +122,55 @@ g3.set_ylabel(
 g3.set_xlabel(
     'Prediction Tool', 
     fontsize = 10
+    )
+plt.show()
+sns.reset_defaults()
+
+#pivot wider and plot pairplots
+length_phage_predictions_wide = phage_predictions\
+    .pivot_table(
+        index = "genome",
+        columns='prediction_tool', 
+        values='length'
+        )\
+    .dropna()
+    
+def r(x, y, ax=None, **kws):
+    ax = ax or plt.gca()
+    r, p = sp.stats.pearsonr(x=x, y=y)
+    ax.text(.05, .8, 'r = {:.2f}'.format(r, p),
+        transform=ax.transAxes,
+        size = 20)
+
+g4 = sns.pairplot(
+    length_phage_predictions_wide,
+    corner = True,
+    kind = "reg",
+    plot_kws = {
+        'line_kws' : {
+            'color':'black'
+            },
+        'scatter_kws': {
+            'alpha': 0.3
+            }
+        },
+    diag_kws = {
+        'alpha' : 0.55, 
+        'binwidth' : 5000
+        }
+    )
+g4.set(
+    ylim = (0, 100000),
+    xlim = (0, 100000) 
+    )
+g4.map_lower(r)
+for i, j in zip(*np.triu_indices_from(g.axes, 1)):
+    g.axes[i, j].set_visible(False)
+g4.fig.suptitle(
+    "Correlations between prophage length by prediction tool", 
+    y = 0.925, 
+    x = 0.5,
+    size = 20
     )
 plt.show()
 sns.reset_defaults()
