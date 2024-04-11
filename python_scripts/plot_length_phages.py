@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import scipy as sp
+import scipy.stats as st 
 import numpy as np
 
 project_path = "~/whitchurch_group/PRO_Foodborne_Pseudomonas_Prophages/prophage_regions/"
@@ -9,7 +10,15 @@ phage_predictions = pd.read_csv(project_path+"concatenated_predictions_summary.c
 
 phage_predictions['genome'] = phage_predictions['genome'].str.replace(r'_contigs', '')
 
-#subset for 95% CI
+#calculate for 95% CI
+st.t.interval(
+    0.99, 
+    len(phage_predictions["length"])-1, 
+    loc = np.mean(phage_predictions["length"]), 
+    scale = st.sem(phage_predictions["length"])
+    ) 
+
+#subset for 2 sigma
 p_2pt5 = phage_predictions.length.quantile(0.025)
 p_97pt5 = phage_predictions.length.quantile(0.975)
 phage_predictions_p95 = phage_predictions[
@@ -47,7 +56,7 @@ g = sns.FacetGrid(
     )
 g.map(specs,'length')
 g.fig.suptitle(
-    "Distributions of length of predicted prophage regions (within 95% CI [4061, 96881]) by prediction tool (bin = 5,000)", 
+    "Distributions of length of predicted prophage regions (μ ± 2σ [4061, 96881]) by prediction tool (bin = 5,000)", 
     y = 1.05)
 g.set_titles("{col_name}") 
 g.set_axis_labels(
@@ -80,7 +89,7 @@ def label(x, color, label):
     ax.set_xlim(1000, 100000)
 g2.map(label, "prediction_tool")
 g2.fig.suptitle(
-    "Distribution of lengths of predicted prophage regions (within 95% CI [4061, 96881]) by prediction tool", 
+    "Distribution of lengths of predicted prophage regions (μ ± 2σ [4061, 96881]) by prediction tool", 
     y = 0.9
     )
 g2.fig.subplots_adjust(hspace=-.5)
@@ -112,7 +121,7 @@ sns.pointplot(
     )
 g3.tick_params(labelsize=10)
 g3.set_title(
-    'Distribution of lengths of predicted prophage regions \n(within 95% CI [4061, 96881]) by prediction tool',
+    'Distribution of lengths of predicted prophage regions \n(μ ± 2σ [4061, 96881]) by prediction tool',
     fontsize = 10
     )
 g3.set_ylabel(

@@ -260,7 +260,7 @@ g3.set_xticklabels(
     horizontalalignment = 'right'
     )
 g3.set_title(
-    'Distribution of lengths of predicted prophage regions \n(within 95% CI [4061, 96881]) by species',
+    'Distribution of lengths of predicted prophage regions \n(μ ± 2σ [4061, 96881]) by species',
     fontsize = 10
     )
 g3.set_ylabel(
