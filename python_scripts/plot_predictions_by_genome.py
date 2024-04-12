@@ -210,30 +210,34 @@ g3.set_xlabel(
 plt.show()
 sns.reset_defaults()
 
-p_2pt5 = phage_predictions.length.quantile(0.025)
-p_97pt5 = phage_predictions.length.quantile(0.975)
-phage_predictions_p95 = phage_predictions[
-    phage_predictions.length.gt(p_2pt5) & phage_predictions.length.lt(p_97pt5)
-    ]\
+phage_predictions["log_len"] = phage_predictions["length"].apply(lambda x: np.log(x))
+mean_log_len = phage_predictions["log_len"].mean()
+two_sig_len = 2 * phage_predictions["log_len"].std()
+upper_bound = mean_log_len + two_sig_len
+lower_bound = mean_log_len - two_sig_len
+
+phage_predictions_2sigma = phage_predictions[
+    (phage_predictions['log_len'] >= lower_bound) & (phage_predictions['log_len'] <= upper_bound)]\
     .merge(refseq_predictions, on="genome")\
     .sort_values(
-        'closest_match', 
+        'prediction_tool', 
         ascending = True,
-        key = lambda col: col.str.lower()
+        key=lambda col: col.str.lower()
         )\
     .reset_index()
+
 
 #plot swarmplot of lengths per species
 plt.figure(figsize=(16,8))
 g3 = sns.violinplot(
-    data = phage_predictions_p95,
+    data = phage_predictions_2sigma,
     x = "closest_match",
     y = "length",
     color = "white",
     linewidth = 2,
     cut = 0,
     scale='width',
-    order = phage_predictions_p95\
+    order = phage_predictions_2sigma\
         .groupby("closest_match")\
         .median("length")\
         .sort_values(
@@ -244,7 +248,7 @@ g3 = sns.violinplot(
     )
 sns.pointplot(
     ax = g3,
-    data = phage_predictions_p95,
+    data = phage_predictions_2sigma,
     x = "closest_match",
     y = "length",
     linestyle = "none",
@@ -260,7 +264,7 @@ g3.set_xticklabels(
     horizontalalignment = 'right'
     )
 g3.set_title(
-    'Distribution of lengths of predicted prophage regions \n(μ ± 2σ [4061, 96881]) by species',
+    'Distribution of lengths of predicted prophage regions (μ ± 2σ [4513, 118530]) by species',
     fontsize = 10
     )
 g3.set_ylabel(
