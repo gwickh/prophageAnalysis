@@ -581,7 +581,7 @@ then
                                 awk -F',' '$6>1000' |
                                     cat >> ${outpath}_predictions_summary.csv
         done
-        # rm $outpath*temp* $outpath*.tsv
+        rm $outpath*temp* $outpath*.tsv
     done
     #concatenate summary files together
     echo "contig,prophage_start,prophage_end,genome,prediction_tool,length" \
