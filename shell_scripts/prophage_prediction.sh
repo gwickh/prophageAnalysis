@@ -295,6 +295,7 @@ then
     then
         for k in $assembly/*.f*
             do
+                dbpath="$(sudo find ~ -maxdepth 6 -type d -iname vibrant_db)"
                 base=$(basename $k | cut -d. -f1)
                 alert="RUNNING VIBRANT ON ASSEMBLY $k"
                 alert_banner
@@ -394,6 +395,7 @@ then
     then
         for k in $assembly/*.f*
             do
+                dbpath="$(sudo find ~ -maxdepth 6 -type d -iname GeNomad_db)"
                 base=$(basename $k | cut -d. -f1)
                 alert="RUNNING GENOMAD ON ASSEMBLY $k"
                 alert_banner
