@@ -8,11 +8,23 @@
 source "$(sudo find ~ -maxdepth 4 -name conda.sh)" #find path to conda base environment
 envpath="$(sudo find ~ -maxdepth 3 -name envs)" #set path of conda envs dir
 
-if [ -e $envpath/mmseqs2/ ] 
-then
-	echo "mmseqs2 conda env present" 
-else
-	echo "creating conda env: mmseqs2" 
-	conda create mmseqs2 -n mmseqs2 -c bioconda -c conda-forge -y
-fi
+for k in {mmseqs2,raxml-ng,mafft}
+	do
+	if [ -e $envpath/$k/ ] 
+	then
+		echo "$k conda env present" 
+	else
+		echo "creating conda env: $k" 
+		conda create $k -n $k -c bioconda -c conda-forge -y
+	fi
+done
 
+cat predictions_fastas/* >> seq_database.fa
+
+mmseqs easy-cluster seq_database.fa clusterRes tmp
+
+conda activate mafft
+mafft seq_database.fa > mse_aln.fa
+
+conda activate raxml
+raxml-ng --all --msa seq_database.fa --model LG+G8+F --tree pars{10} --bs-trees 200
