@@ -24,7 +24,7 @@ cat predictions_fastas/* >> seq_database.fa
 mmseqs easy-cluster seq_database.fa clusterRes tmp
 
 conda activate mafft
-mafft seq_database.fa > mse_aln.fa
+mafft --auto seq_database.fa > mse_aln.fa
 
 conda activate raxml
 raxml-ng --all --msa seq_database.fa --model LG+G8+F --tree pars{10} --bs-trees 200
